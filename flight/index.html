@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OVRFLIGHT · Live Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+  :root{
+    --teal:#4A9DAB; --signal:#21B9BA; --glow:#66E6E0; --deep:#357C8A; --darkest:#1E5560;
+    /* Deck Ink neutrals - NETWORK SHARED (see nthsky.ai docs/BRAND-STANDARD.md) */
+    --ink:#0B0E12; --slate:#14181E; --graphite:#262C35; --steel:#77828E; --mist:#B6BFC9; --cloud:#F2F5F7;
+    --intent:#FF8A3D; --intent-glow:#FFB27A; --heli:#FF5C5C;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--slate);color:var(--cloud);
+    font-family:'Inter',system-ui,sans-serif;overflow:hidden}
+
+  /* ---------- Landing / entry ---------- */
+  #entry{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:28px;background:
+    radial-gradient(1200px 600px at 70% 20%, rgba(53,124,138,.18), transparent 60%),
+    radial-gradient(900px 500px at 20% 80%, rgba(33,185,186,.10), transparent 60%),
+    var(--slate);z-index:5000;transition:opacity .5s ease}
+  #entry.gone{opacity:0;pointer-events:none}
+  #entry .word{font-family:'Poppins',sans-serif;font-weight:700;font-size:44px;
+    letter-spacing:.14em;color:var(--cloud)}
+  #entry .word span{color:var(--signal)}
+  #entry .tag{font-family:'Inter',sans-serif;font-weight:400;font-size:14px;
+    color:var(--mist);letter-spacing:.28em;text-transform:uppercase}
+  #liveBtn{font-family:'Poppins',sans-serif;font-weight:500;font-size:16px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink);
+    background:var(--signal);border:none;border-radius:8px;padding:16px 42px;
+    cursor:pointer;display:flex;align-items:center;gap:12px;
+    box-shadow:0 0 30px rgba(33,185,186,.35);transition:all .2s}
+  #liveBtn:hover{background:var(--glow);box-shadow:0 0 46px rgba(102,230,224,.5)}
+  #liveBtn .pulse{width:10px;height:10px;border-radius:50%;background:var(--ink);
+    animation:blink 1.6s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  #entry .note{font-size:12px;color:var(--steel);max-width:420px;text-align:center;line-height:1.6}
+
+  /* ---------- App frame ---------- */
+  #app{display:none;height:100%;flex-direction:column}
+  #app.on{display:flex}
+  header{height:56px;flex:0 0 56px;display:flex;align-items:center;gap:16px;
+    padding:0 18px;background:var(--slate);border-bottom:1px solid var(--graphite);z-index:1200}
+  header .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;
+    letter-spacing:.14em;color:var(--cloud)}
+  header .brand span{color:var(--signal)}
+  header .chip{font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--ink);background:var(--signal);border-radius:4px;padding:4px 10px;
+    display:flex;align-items:center;gap:7px;cursor:pointer;border:none;
+    font-family:'Inter',sans-serif}
+  header .chip:hover{background:var(--glow)}
+  header .brand{cursor:pointer}
+  header .chip i{width:7px;height:7px;border-radius:50%;background:var(--ink);
+    animation:blink 1.6s infinite}
+  header .stats{margin-left:auto;display:flex;gap:22px;font-size:12px;color:var(--mist)}
+  header .stats b{color:var(--glow);font-weight:600;font-variant-numeric:tabular-nums}
+  header .sim{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);
+    border:1px solid var(--graphite);border-radius:4px;padding:4px 10px}
+
+  #main{flex:1;display:flex;min-height:0}
+
+  /* ---------- Left panel ---------- */
+  #panel{width:330px;flex:0 0 330px;background:var(--slate);border-right:1px solid var(--graphite);
+    display:flex;flex-direction:column;min-height:0;z-index:1100}
+  #panelHead{padding:14px 16px 10px;border-bottom:1px solid var(--graphite)}
+  #panelHead h2{font-family:'Poppins',sans-serif;font-weight:500;font-size:13px;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--cloud)}
+  #sortNote{font-size:11px;color:var(--steel);margin-top:5px}
+  #sortNote em{color:var(--signal);font-style:normal}
+
+  /* intent readout card */
+  #intentCard{display:none;margin:10px 12px 4px;padding:12px 14px;border-radius:8px;
+    background:rgba(255,138,61,.08);border:1px solid rgba(255,138,61,.4)}
+  #intentCard.on{display:block}
+  #intentCard .t{display:flex;align-items:center;gap:8px;font-family:'Poppins',sans-serif;
+    font-weight:500;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--intent-glow)}
+  #intentCard .t .orb{width:12px;height:12px;border-radius:50%;
+    background:radial-gradient(circle,var(--intent-glow) 0%,rgba(255,138,61,.5) 45%,transparent 72%)}
+  #intentCard .nums{display:flex;gap:18px;margin-top:9px;font-size:12px;color:var(--mist)}
+  #intentCard .nums b{display:block;font-size:19px;font-weight:600;color:var(--cloud);
+    font-family:'Poppins',sans-serif;font-variant-numeric:tabular-nums}
+  #intentCard .nums .warn b{color:var(--intent-glow)}
+  #intentCard .altRow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--mist)}
+  #intentCard input{width:64px;background:var(--ink);border:1px solid var(--graphite);
+    color:var(--cloud);border-radius:5px;padding:4px 7px;font:600 12px 'Inter',sans-serif;text-align:right}
+  #intentCard input:focus{outline:none;border-color:var(--intent)}
+  #clearIntent{margin-left:auto;background:none;border:1px solid var(--graphite);color:var(--mist);
+    font:500 10px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;
+    border-radius:5px;padding:4px 9px;cursor:pointer}
+  #clearIntent:hover{color:var(--cloud);border-color:var(--steel)}
+
+  #list{flex:1;overflow-y:auto;min-height:0;padding:6px 0}
+  #list::-webkit-scrollbar{width:8px}
+  #list::-webkit-scrollbar-thumb{background:var(--graphite);border-radius:4px}
+  .row{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;
+    border-left:3px solid transparent;transition:background .15s}
+  .row:hover{background:rgba(74,157,171,.08)}
+  .row.sel{background:rgba(33,185,186,.12);border-left-color:var(--signal)}
+  .row.conflict{border-left-color:var(--intent)}
+  .row.conflict .dot{background:radial-gradient(circle,var(--intent-glow) 0%,rgba(255,138,61,.5) 45%,transparent 72%)}
+  .row .dot{flex:0 0 18px;width:18px;height:18px;border-radius:50%;
+    background:radial-gradient(circle,var(--glow) 0%,rgba(33,185,186,.55) 45%,transparent 72%)}
+  .row .meta{flex:1;min-width:0}
+  .row .name{font-size:12.5px;font-weight:600;color:var(--cloud);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .row .sub{font-size:11px;color:var(--steel);margin-top:2px;display:flex;gap:10px;
+    font-variant-numeric:tabular-nums}
+  .row .sub .alt{color:var(--mist)}
+  .row .dist{font-size:11px;color:var(--signal);font-weight:600;white-space:nowrap;
+    font-variant-numeric:tabular-nums;text-align:right}
+  .row .dist small{display:block;color:var(--steel);font-weight:400;margin-top:2px}
+  .row .tag{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:var(--ink);
+    background:var(--intent);border-radius:3px;padding:2px 5px;margin-top:3px;display:inline-block}
+
+  #panelFoot{flex:0 0 auto;padding:10px 16px;border-top:1px solid var(--graphite);
+    font-size:10.5px;color:var(--steel);line-height:1.55}
+  #panelFoot b{color:var(--mist);font-weight:500}
+
+  /* ---------- Map ---------- */
+  #mapWrap{flex:1;position:relative;min-width:0}
+  #map{position:absolute;inset:0;background:var(--slate)}
+  .leaflet-container{background:var(--slate);font-family:'Inter',sans-serif}
+
+  /* helicopters: red, slow-pulsing outlined triangle */
+  .tri{color:var(--heli);filter:drop-shadow(0 0 6px rgba(255,92,92,.75));
+    animation:heliPulse 2.6s ease-in-out infinite}
+  @keyframes heliPulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .tri.conflict{color:var(--intent-glow);filter:drop-shadow(0 0 6px rgba(255,138,61,.8))}
+  .tri.sel{filter:drop-shadow(0 0 12px rgba(255,92,92,1));animation:none}
+  .hdot{color:var(--heli);flex:0 0 16px;animation:heliPulse 2.6s ease-in-out infinite}
+  .row.conflict .hdot{color:var(--intent-glow)}
+
+  .orb{border-radius:50%;
+    background:radial-gradient(circle,rgba(102,230,224,.95) 0%,rgba(33,185,186,.55) 42%,rgba(33,185,186,0) 72%)}
+  .orb.heli{background:radial-gradient(circle,rgba(102,230,224,.95) 0%,rgba(33,185,186,.5) 46%,rgba(33,185,186,0) 74%)}
+  .orb.conflict{background:radial-gradient(circle,rgba(255,178,122,.98) 0%,rgba(255,138,61,.55) 42%,rgba(255,138,61,0) 72%)}
+  .orb.sel{animation:ping 1.5s ease-out infinite}
+  .orb.unv,.tri.unv{opacity:.45;filter:saturate(.35)}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(102,230,224,.55)}
+    70%{box-shadow:0 0 0 22px rgba(102,230,224,0)}100%{box-shadow:0 0 0 0 rgba(102,230,224,0)}}
+  .orb.intent{background:radial-gradient(circle,rgba(255,178,122,1) 0%,rgba(255,138,61,.55) 42%,rgba(255,138,61,0) 72%);
+    animation:pingO 2s ease-out infinite}
+  @keyframes pingO{0%{box-shadow:0 0 0 0 rgba(255,138,61,.45)}
+    70%{box-shadow:0 0 0 26px rgba(255,138,61,0)}100%{box-shadow:0 0 0 0 rgba(255,138,61,0)}}
+
+  .leaflet-popup-content-wrapper{background:var(--slate);color:var(--cloud);border-radius:8px;
+    border:1px solid var(--graphite);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .leaflet-popup-tip{background:var(--slate)}
+  .leaflet-popup-content{margin:12px 15px;font:12px 'Inter',sans-serif;line-height:1.6}
+  .pop .pn{font-family:'Poppins',sans-serif;font-weight:600;font-size:13px;color:var(--glow)}
+  .pop .po{font-size:11px;color:var(--steel);margin-bottom:6px}
+  .pop table{border-collapse:collapse}
+  .pop td{padding:1px 0;font-variant-numeric:tabular-nums}
+  .pop td:first-child{color:var(--steel);padding-right:14px}
+
+  #legend{position:absolute;right:14px;bottom:26px;z-index:1000;background:rgba(34,42,46,.92);
+    border:1px solid var(--graphite);border-radius:8px;padding:12px 15px;font-size:11px;
+    color:var(--mist);line-height:2;backdrop-filter:blur(4px)}
+  #legend .li{display:flex;align-items:center;gap:10px}
+  #legend .d{width:14px;height:14px;border-radius:50%;flex:0 0 14px;
+    background:radial-gradient(circle,var(--glow) 0%,rgba(33,185,186,.5) 45%,transparent 72%)}
+  #legend .d.h{background:none;border-radius:0}
+  #legend .d.o{background:radial-gradient(circle,var(--intent-glow) 0%,rgba(255,138,61,.5) 45%,transparent 72%)}
+  #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:26px;z-index:1000;
+    background:rgba(34,42,46,.92);border:1px solid var(--graphite);border-radius:20px;
+    padding:8px 18px;font-size:11.5px;color:var(--mist);backdrop-filter:blur(4px)}
+  #hint b{color:var(--intent-glow);font-weight:600}
+  .leaflet-control-attribution{background:rgba(15,22,25,.8)!important;color:var(--steel)!important;font-size:9px!important}
+  .leaflet-control-attribution a{color:var(--steel)!important}
+  .leaflet-control-zoom a{background:var(--slate)!important;color:var(--cloud)!important;
+    border-color:var(--graphite)!important}
+
+  /* ---------- auth + forms ---------- */
+  #authView{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(1000px 500px at 70% 20%,rgba(53,124,138,.16),transparent 60%),var(--slate);
+    z-index:6000;overflow-y:auto;padding:30px 0}
+  #authView.on{display:flex}
+  .card{width:min(410px,92vw);background:var(--slate);border:1px solid var(--graphite);
+    border-radius:12px;padding:26px}
+  .card .word2{font-family:'Poppins',sans-serif;font-weight:700;font-size:22px;
+    letter-spacing:.13em;color:var(--cloud);margin-bottom:18px;text-align:center}
+  .card .word2 span{color:var(--signal)}
+  .tabs2{display:flex;gap:6px;margin-bottom:16px}
+  .tabs2 button{flex:1;padding:10px;border-radius:6px;border:1px solid var(--graphite);
+    background:none;color:var(--mist);font:600 12px 'Inter',sans-serif;cursor:pointer}
+  .tabs2 button.act{background:var(--signal);border-color:var(--signal);color:var(--ink)}
+  .f label{display:block;font-size:10.5px;font-weight:600;color:var(--mist);
+    margin:13px 0 5px;letter-spacing:.12em;text-transform:uppercase}
+  .f input,.f select{width:100%;background:var(--ink);border:1px solid var(--graphite);
+    border-radius:6px;color:var(--cloud);padding:10px 12px;font:14px 'Inter',sans-serif}
+  .f input:focus,.f select:focus{outline:none;border-color:var(--signal)}
+  .btn{width:100%;margin-top:18px;padding:12px;border:none;border-radius:7px;
+    background:var(--signal);color:var(--ink);font:600 13px 'Poppins',sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+  .btn:hover{background:var(--glow)}
+  .btn.slim{width:auto;margin:0;padding:8px 16px;font-size:11px}
+  .btn2{width:100%;margin-top:10px;padding:11px;border-radius:7px;background:none;
+    border:1px solid var(--graphite);color:var(--mist);font:500 12px 'Inter',sans-serif;cursor:pointer}
+  .btn2:hover{color:var(--cloud);border-color:var(--steel)}
+  .btn2.slim{width:auto;margin:0;padding:6px 12px;font-size:11px}
+  .errmsg{color:#ff8585;font-size:12px;margin-top:12px;min-height:15px}
+  .ssoRow{margin-top:16px;text-align:center}
+  .ssoRow span{display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--steel);margin-bottom:10px}
+  .ssoBtn{width:100%;padding:11px;border-radius:7px;background:none;
+    border:1px solid var(--deep);color:var(--glow);cursor:pointer;
+    font:600 12px 'Poppins',sans-serif;letter-spacing:.08em;text-transform:uppercase}
+  .ssoBtn:hover{background:rgba(33,185,186,.1);border-color:var(--signal)}
+  #ssoLanding{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:var(--slate);z-index:7000;flex-direction:column;gap:16px;
+    font-family:'Inter',sans-serif;color:var(--mist);font-size:13px}
+  #ssoLanding.on{display:flex}
+  #ssoLanding .word{font-family:'Poppins',sans-serif;font-weight:700;font-size:22px;
+    letter-spacing:.14em;color:var(--cloud)}
+  #ssoLanding .word span{color:var(--signal)}
+  .notemsg{color:var(--glow);font-size:12px;margin-top:12px;line-height:1.5}
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(15,22,25,.82);z-index:3000}
+  .modal.on{display:flex}
+
+  /* ---------- header account ---------- */
+  .acct{display:flex;align-items:center;gap:10px}
+  .acct .who{font-size:12px;color:var(--mist)}
+  .acct .who b{color:var(--cloud);font-weight:600}
+  .gearbtn{background:none;border:1px solid var(--graphite);border-radius:6px;
+    color:var(--mist);font:600 11px 'Inter',sans-serif;letter-spacing:.08em;
+    text-transform:uppercase;padding:7px 13px;cursor:pointer}
+  .gearbtn:hover{color:var(--glow);border-color:var(--deep)}
+  .flybtn{background:var(--signal);border:none;border-radius:6px;color:var(--ink);
+    font:600 11px 'Poppins',sans-serif;letter-spacing:.08em;text-transform:uppercase;
+    padding:8px 15px;cursor:pointer}
+  .flybtn:hover{background:var(--glow)}
+  .flybtn.flying{background:var(--heli);color:var(--cloud)}
+
+  /* in-flight reporting pill */
+  #flyPill{position:fixed;left:346px;bottom:26px;z-index:1400;display:none;
+    align-items:center;gap:12px;background:rgba(15,22,25,.94);
+    border:1px solid var(--deep);border-radius:24px;padding:9px 16px;
+    font-size:12px;color:var(--cloud);backdrop-filter:blur(4px)}
+  #flyPill.on{display:flex}
+  #flyPill .rec{width:9px;height:9px;border-radius:50%;background:var(--heli);
+    animation:blink 1.4s infinite}
+  #flyPill b{color:var(--glow)}
+  #flyPill .altb{background:none;border:1px solid var(--graphite);color:var(--mist);
+    border-radius:5px;width:26px;height:24px;font:600 13px 'Inter',sans-serif;cursor:pointer}
+  #flyPill .altb:hover{color:var(--glow);border-color:var(--deep)}
+  #flyPill .endb{background:var(--heli);border:none;border-radius:14px;color:var(--cloud);
+    font:600 10px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;
+    padding:6px 14px;cursor:pointer}
+  #flyPill .gps{font-size:10.5px;color:var(--steel)}
+
+  /* ---------- settings panel ---------- */
+  #settings{position:fixed;top:56px;right:0;bottom:0;width:min(420px,100vw);
+    background:var(--slate);border-left:1px solid var(--graphite);z-index:2000;
+    transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column}
+  #settings.on{transform:none}
+  .stabs{display:flex;border-bottom:1px solid var(--graphite);flex:0 0 auto}
+  .stabs button{flex:1;padding:13px 4px;background:none;border:none;color:var(--steel);
+    font:600 10.5px 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;
+    cursor:pointer;border-bottom:2px solid transparent}
+  .stabs button.act{color:var(--glow);border-bottom-color:var(--signal)}
+  #sbody{flex:1;overflow-y:auto;padding:18px 20px 30px}
+  #sbody h4{font-family:'Poppins',sans-serif;font-weight:500;font-size:12px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--cloud);margin:20px 0 10px}
+  #sbody h4:first-child{margin-top:2px}
+  .kv{display:flex;justify-content:space-between;gap:14px;padding:8px 0;
+    border-bottom:1px solid rgba(57,68,74,.5);font-size:12.5px}
+  .kv .k{color:var(--steel)}
+  .kv .v{color:var(--cloud);text-align:right;word-break:break-all}
+  .pill{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.1em;
+    border-radius:4px;padding:3px 8px;text-transform:uppercase}
+  .pill.ok{background:rgba(33,185,186,.15);color:var(--glow)}
+  .pill.warn{background:rgba(255,138,61,.15);color:var(--intent-glow)}
+  .pill.off{background:rgba(110,121,126,.18);color:var(--steel)}
+  .srcrow{border:1px solid var(--graphite);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+  .srcrow .t{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .srcrow .t b{font-size:13px;color:var(--cloud)}
+  .srcrow .sub2{font-size:11px;color:var(--steel);margin-top:5px;line-height:1.6}
+  .endpoint{background:var(--ink);border:1px solid var(--graphite);border-radius:6px;
+    padding:9px 11px;font:11.5px ui-monospace,monospace;color:var(--mist);
+    word-break:break-all;margin-top:7px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .copyb{background:none;border:none;color:var(--signal);font:600 10px 'Inter',sans-serif;
+    letter-spacing:.06em;cursor:pointer;text-transform:uppercase;white-space:nowrap}
+  .copyb:hover{color:var(--glow)}
+  .secretbox{background:rgba(33,185,186,.08);border:1px dashed var(--signal);
+    border-radius:7px;padding:12px;margin-top:12px;font:12px ui-monospace,monospace;
+    color:var(--glow);word-break:break-all}
+  .secretbox .warn2{display:block;font:600 10px 'Inter',sans-serif;color:var(--intent-glow);
+    letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+  .inline{display:flex;gap:8px;margin-top:10px}
+  .inline input{flex:1}
+  .gart{font-size:12.5px;line-height:1.75;color:var(--mist)}
+  .gart p{margin:0 0 12px}
+  .gart b{color:var(--cloud)}
+  .gart ul{margin:0 0 12px 18px}
+  .gart li{margin-bottom:6px}
+  .gart .hl{color:var(--glow)}
+  .gitem{cursor:pointer}
+  .gitem:hover{border-color:var(--deep)}
+
+  /* ---------- dashboard ---------- */
+  #dash{position:fixed;top:56px;left:0;right:0;bottom:0;background:var(--slate);
+    z-index:1900;display:none;overflow-y:auto;padding:22px 30px 60px}
+  #dash.on{display:block}
+  .dhead{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+  .dhead h3{font-family:'Poppins',sans-serif;font-weight:500;font-size:14px;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--cloud)}
+  .dhead .orgname{font-size:12px;color:var(--signal);font-weight:600}
+  .dhead button{margin-left:auto}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .tile{background:var(--ink);border:1px solid var(--graphite);border-radius:10px;
+    padding:14px 16px}
+  .tile b{display:block;font-family:'Poppins',sans-serif;font-weight:600;font-size:23px;
+    color:var(--glow);font-variant-numeric:tabular-nums}
+  .tile span{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--steel)}
+  .tile.err b{color:var(--heli);font-size:15px;line-height:1.4}
+  .dsec{margin-top:28px}
+  .dsec h4{font-family:'Poppins',sans-serif;font-weight:500;font-size:12px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--cloud);
+    display:flex;align-items:center;gap:12px}
+  .dctrl{display:flex;gap:10px;align-items:center;margin:12px 0 4px;flex-wrap:wrap}
+  .dctrl input{background:var(--ink);border:1px solid var(--graphite);border-radius:6px;
+    color:var(--cloud);padding:9px 12px;font:13px 'Inter',sans-serif;width:250px}
+  .dctrl input:focus{outline:none;border-color:var(--signal)}
+  .chips{display:flex;gap:6px}
+  .chips button{background:none;border:1px solid var(--graphite);color:var(--mist);
+    border-radius:20px;padding:6px 14px;font:600 11px 'Inter',sans-serif;cursor:pointer}
+  .chips button.act{background:var(--signal);border-color:var(--signal);color:var(--ink)}
+  #miniMap{height:260px;border:1px solid var(--graphite);border-radius:10px;
+    margin:10px 0;background:var(--ink)}
+  .dtable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  .dtable th{text-align:left;color:var(--steel);font-size:10px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;padding:9px 10px;
+    border-bottom:1px solid var(--graphite)}
+  .dtable td{padding:9px 10px;border-bottom:1px solid rgba(57,68,74,.4);
+    color:var(--cloud);font-variant-numeric:tabular-nums}
+  .dtable .mut{color:var(--steel)}
+  .jump{background:none;border:1px solid var(--deep);color:var(--signal);
+    border-radius:5px;padding:5px 11px;font:600 10px 'Inter',sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;
+    white-space:nowrap}
+  .jump:hover{background:var(--signal);color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div id="entry">
+  <div class="word">OVR<span>FLIGHT</span></div>
+  <div class="tag">One sky. One source of truth.</div>
+  <button id="liveBtn"><span class="pulse"></span>Live Map</button>
+  <button id="ssoEntryBtn" class="ssoBtn" style="width:auto;padding:12px 34px">Sign in with NTHSKY</button>
+  <button id="acctBtn" class="btn2" style="width:auto;padding:11px 34px">Sign in / Create account</button>
+  <div class="note" id="entryNote">One shared picture of low-altitude airspace. Sign in for
+    live data, or open the map to explore the simulated view. Click anywhere on the map to
+    place an area of intent and see who is flying near you.</div>
+</div>
+
+<div id="ssoLanding">
+  <div class="word">OVR<span>FLIGHT</span></div>
+  <div id="ssoMsg">Signing you in with NTHSKY…</div>
+</div>
+
+<div id="authView">
+  <div class="card">
+    <div class="word2">OVR<span>FLIGHT</span></div>
+    <div class="tabs2">
+      <button id="tabIn" class="act">Sign in</button>
+      <button id="tabUp">Create account</button>
+    </div>
+    <div id="closedNote" style="display:none;font-size:11.5px;color:var(--steel);
+      line-height:1.65;margin-bottom:4px">Public signup is not open yet. Sign in with
+      your NTHSKY account below, or contact NTHSKY for access.</div>
+    <div id="fIn" class="f">
+      <label>Email</label><input id="inEmail" type="email" autocomplete="email">
+      <label>Password</label><input id="inPass" type="password" autocomplete="current-password">
+      <button class="btn" id="doIn">Sign in</button>
+    </div>
+    <div id="fUp" class="f" style="display:none">
+      <label>Your name</label><input id="upName" type="text">
+      <label>Email</label><input id="upEmail" type="email" autocomplete="email">
+      <label>Password (8+ characters)</label><input id="upPass" type="password" autocomplete="new-password">
+      <label>Operator type</label>
+      <select id="upDesig">
+        <option value="commercial">Commercial (Part 107, delivery, security)</option>
+        <option value="first_responder">First responder / public safety</option>
+        <option value="police">Police</option>
+        <option value="fire">Fire</option>
+        <option value="hobbyist">Personal / hobbyist</option>
+      </select>
+      <div id="agencyWrap" style="display:none">
+        <label>Agency / department name</label><input id="upAgency" type="text">
+      </div>
+      <div id="p107Wrap">
+        <label>Part 107 certificate number</label>
+        <input id="upP107" type="text" placeholder="On your remote pilot card, e.g. 4123456">
+        <div style="font-size:10.5px;color:var(--steel);margin-top:5px">Required for
+          commercial accounts. We check it against the FAA registry to award your
+          Verified badge; you can fly while it is pending.</div>
+      </div>
+      <button class="btn" id="doUp">Create account</button>
+    </div>
+    <div class="errmsg" id="authErr"></div>
+    <div class="notemsg" id="authNote"></div>
+    <div class="ssoRow">
+      <span>or</span>
+      <button class="ssoBtn" id="ssoBtn">Sign in with NTHSKY</button>
+    </div>
+    <button class="btn2" id="authBack">Back</button>
+  </div>
+</div>
+
+<div id="flyModal" class="modal">
+  <div class="card">
+    <div class="word2" style="font-size:16px">Start Flight</div>
+    <div class="f">
+      <label>Callsign / aircraft name</label>
+      <input id="flyName" type="text" placeholder="e.g. M350-01 or your name">
+      <label>Aircraft type</label>
+      <select id="flyClass">
+        <option value="drone">Drone</option>
+        <option value="heli">Helicopter</option>
+        <option value="fixed_wing">Fixed wing</option>
+      </select>
+      <label>Altitude (ft AGL) - adjust anytime while flying</label>
+      <input id="flyAlt" type="number" value="200" min="0" max="1500" step="25">
+      <button class="btn" id="flyGo">Start reporting my position</button>
+      <div class="errmsg" id="flyErr"></div>
+      <div class="notemsg" style="color:var(--steel);font-size:11px">Uses this device's GPS.
+        Your position posts every few seconds until you end the flight. Works best on a phone
+        standing at the controls.</div>
+      <button class="btn2" id="flyCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="flyPill">
+  <span class="rec"></span>
+  <span>REPORTING <b id="pillName"></b></span>
+  <span><button class="altb" id="altDown">−</button>
+    <b id="pillAlt">200</b> ft
+    <button class="altb" id="altUp">+</button></span>
+  <span class="gps" id="pillGps">GPS…</span>
+  <button class="endb" id="flyEnd">End Flight</button>
+</div>
+
+<div id="orgModal" class="modal">
+  <div class="card">
+    <div class="word2" style="font-size:16px">Set up your organization</div>
+    <div class="f">
+      <label>Organization name</label><input id="orgName" type="text" placeholder="e.g. NTHSKY Ops">
+      <label>Type</label>
+      <select id="orgKind">
+        <option value="commercial">Commercial company</option>
+        <option value="agency">Public safety agency</option>
+        <option value="dept">Government department</option>
+        <option value="personal">Personal</option>
+      </select>
+      <button class="btn" id="doOrg">Create organization</button>
+      <div class="errmsg" id="orgErr"></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="brand">OVR<span>FLIGHT</span></div>
+    <button class="chip" id="chipMap" title="Back to the live map"><i></i>Live Map</button>
+    <div class="stats">
+      <div><b id="stTotal">0</b> active</div>
+      <div><b id="stDrone">0</b> drones</div>
+      <div><b id="stHeli">0</b> helicopters</div>
+    </div>
+    <div class="sim">Simulated data</div>
+    <div class="acct" id="acctChip" style="display:none">
+      <span class="who">Signed in as <b id="acctName"></b></span>
+      <button class="flybtn" id="flyBtn">Start Flight</button>
+      <button class="gearbtn" id="dashBtn">Dashboard</button>
+      <button class="gearbtn" id="gearBtn">Settings</button>
+    </div>
+  </header>
+  <div id="main">
+    <aside id="panel">
+      <div id="panelHead">
+        <h2>Aircraft in view</h2>
+        <div id="sortNote">Sorted by distance to <em id="sortRef">map center</em>
+          <button id="vOnly" style="float:right;background:none;border:1px solid var(--graphite);
+            color:var(--steel);border-radius:10px;padding:2px 9px;font:600 9.5px 'Inter',sans-serif;
+            letter-spacing:.06em;cursor:pointer;text-transform:uppercase">Verified only: off</button>
+        </div>
+      </div>
+      <div id="intentCard">
+        <div class="t"><span class="orb"></span>Area of intent</div>
+        <div class="nums">
+          <div><b id="iNear">0</b>within 2 mi</div>
+          <div class="warn"><b id="iConf">0</b>conflicts</div>
+        </div>
+        <div class="altRow">
+          Intended altitude
+          <input id="iAlt" type="number" value="200" min="0" max="1500" step="25"> ft AGL
+          <button id="clearIntent">Clear</button>
+        </div>
+      </div>
+      <div id="list"></div>
+      <div id="panelFoot">
+        <b>Conflict rule:</b> within 0.25 mi of your intent and within 100 ft of your
+        intended altitude. Conflicts pin to the top of the list.
+      </div>
+    </aside>
+    <div id="mapWrap">
+      <div id="map"></div>
+      <div id="legend">
+        <div class="li"><span class="d"></span>Drone</div>
+        <div class="li"><svg class="d h" width="15" height="13" viewBox="0 0 22 20"><path d="M11 2 L20 18 L2 18 Z" fill="none" stroke="#FF5C5C" stroke-width="2.6" stroke-linejoin="round"/></svg>Helicopter</div>
+        <div class="li"><span class="d o"></span>Your area of intent</div>
+        <div class="li"><span class="d" style="opacity:.4"></span>Dimmed = unverified source</div>
+      </div>
+      <div id="hint">Click the map to place an <b>area of intent</b></div>
+    </div>
+  </div>
+</div>
+
+<div id="dash">
+  <div class="dhead"><h3>Operations Dashboard</h3><span class="orgname" id="dOrg"></span>
+    <button class="btn2 slim" id="dashClose">Back to map</button></div>
+  <div class="tiles" id="dTiles"></div>
+  <div class="dsec">
+    <h4>Live operations <span class="pill ok" id="dLiveCount">0 active</span></h4>
+    <div class="dctrl">
+      <input id="dQ" placeholder="Search aircraft, org, callsign...">
+      <div class="chips" id="dRad">
+        <button data-r="0" class="act">Everywhere</button>
+        <button data-r="50">50 mi</button>
+        <button data-r="150">150 mi</button>
+        <button data-r="300">300 mi</button>
+      </div>
+      <button class="btn2 slim" id="dMine">My org only: off</button>
+      <button class="btn2 slim" id="dVer">Verified only: off</button>
+      <button class="btn2 slim" id="dClear" style="display:none">Clear area filter</button>
+    </div>
+    <div class="sub2" style="color:var(--steel);font-size:11px">Click the mini map to focus an
+      area, pick a radius, or search. Live Map jumps to that aircraft in a new tab.</div>
+    <div id="miniMap"></div>
+    <table class="dtable"><thead><tr><th>Aircraft</th><th>Operator</th><th>Class</th>
+      <th>Alt ft</th><th>Speed</th><th>Position</th><th>Last report</th><th></th></tr></thead>
+      <tbody id="dLiveT"></tbody></table>
+  </div>
+  <div class="dsec"><h4>Missions planned &amp; active</h4><div id="dMissions"></div></div>
+  <div class="dsec">
+    <h4>Flight logs <button class="btn slim" id="dCsv">Export CSV</button></h4>
+    <table class="dtable"><thead><tr><th>Aircraft</th><th>Class</th><th>Started (UTC)</th>
+      <th>Duration</th><th>Max alt</th><th>Distance</th><th>Points</th></tr></thead>
+      <tbody id="dLogT"></tbody></table>
+  </div>
+  <div class="dsec"><h4>Team</h4>
+    <table class="dtable"><thead><tr><th>Name</th><th>Email</th><th>Designation</th>
+      <th>Org role</th></tr></thead><tbody id="dTeamT"></tbody></table>
+  </div>
+</div>
+
+<div id="settings">
+  <div class="stabs">
+    <button data-t="profile" class="act">Profile</button>
+    <button data-t="org">Organization</button>
+    <button data-t="sources">Sources</button>
+    <button data-t="guide">Guide</button>
+    <button data-t="admin" id="adminTabBtn" style="display:none">Admin</button>
+  </div>
+  <div id="sbody"></div>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+'use strict';
+
+/* Stale bookmarks point at the workers.dev address. Move browsers to the
+   canonical domain before anything else runs: SSO tickets are only issued for
+   ovrflight.org, so a page served from any other host cannot complete a
+   sign-in. This lives in the page rather than the worker because static assets
+   are served ahead of the worker script - a redirect there never fires for `/`.
+   The path, query and hash all carry over, so an in-flight SSO callback that
+   somehow lands here survives the hop. API clients are untouched: they never
+   load this page, and workers.dev remains the fallback door. */
+if (location.hostname.endsWith('.workers.dev')) {
+  location.replace('https://ovrflight.org' + location.pathname + location.search + location.hash);
+}
+
+/* ============ simulated telemetry: ~45 static aircraft in Asheville ============ */
+// Seeded PRNG so the scene is identical every load.
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;
+  var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return((t^t>>>14)>>>0)/4294967296}}
+const rnd=mulberry32(20260704);
+const pick=arr=>arr[Math.floor(rnd()*arr.length)];
+
+// Cluster centers inside Asheville city limits.
+const CLUSTERS=[
+  {lat:35.5951,lon:-82.5515,w:.30},  // downtown
+  {lat:35.5871,lon:-82.5646,w:.15},  // River Arts District
+  {lat:35.6199,lon:-82.5540,w:.12},  // north / UNCA
+  {lat:35.5560,lon:-82.5400,w:.12},  // Biltmore Village
+  {lat:35.5734,lon:-82.6103,w:.10},  // West Asheville
+  {lat:35.6111,lon:-82.5150,w:.08},  // east / Tunnel Rd
+  {lat:35.5399,lon:-82.5892,w:.08},  // south / Shiloh
+  {lat:35.6420,lon:-82.5730,w:.05},  // far north
+];
+function place(){
+  let r=rnd(),acc=0,c=CLUSTERS[0];
+  for(const k of CLUSTERS){acc+=k.w;if(r<=acc){c=k;break}}
+  const spread=.014+rnd()*.012;
+  return{lat:c.lat+(rnd()-.5)*spread,lon:c.lon+(rnd()-.5)*spread*1.25};
+}
+
+const DJI=['DJI Mavic 3E','DJI Mavic 3T','DJI Matrice 30T','DJI Matrice 350 RTK',
+  'DJI Matrice 4E','DJI Matrice 4T','DJI Air 3','DJI Mini 4 Pro','DJI Inspire 3',
+  'DJI Phantom 4 RTK'];
+const DRONE_ORGS=['Asheville PD UAS','Asheville FD','Buncombe County EM','NC DOT Aerial',
+  'Duke Energy Inspection','French Broad Aerials','Skyline Surveys','Blue Ridge Roof Co',
+  'AVL Delivery Co','Pisgah Mapping','Highland Media','Summit Security Ops'];
+const HELIS=[
+  {model:'Bell 407 · MAMA 1',org:'Mission Health'},
+  {model:'Airbus H125',org:'NC Highway Patrol'},
+  {model:'Bell 206',org:'WLOS Sky 13'},
+  {model:'Airbus H135 · Life Force',org:'Erlanger Health'},
+  {model:'MD 500',org:'Duke Energy Lines'},
+  {model:'Robinson R44',org:'AVL Charter Tours'},
+  {model:'Bell 429',org:'Buncombe Sheriff Air'},
+];
+
+const AIRCRAFT=[];
+let idn=1;
+for(let i=0;i<38;i++){
+  const p=place();
+  AIRCRAFT.push({
+    id:'AC'+String(idn++).padStart(3,'0'),
+    cls:'drone', model:pick(DJI), org:pick(DRONE_ORGS),
+    lat:p.lat, lon:p.lon,
+    alt:Math.round((50+rnd()*350)/5)*5,               // 50–400 ft AGL
+    heading:Math.round(rnd()*359),
+    speed:+(2+rnd()*14).toFixed(1),                    // m/s
+    mins:Math.round(2+rnd()*88),                       // minutes flying
+  });
+}
+for(let i=0;i<7;i++){
+  const p=place(), h=HELIS[i];
+  AIRCRAFT.push({
+    id:'AC'+String(idn++).padStart(3,'0'),
+    cls:'heli', model:h.model, org:h.org,
+    lat:p.lat, lon:p.lon,
+    alt:Math.round((500+rnd()*1000)/25)*25,            // 500–1500 ft AGL
+    heading:Math.round(rnd()*359),
+    speed:+(20+rnd()*45).toFixed(1),
+    mins:Math.round(5+rnd()*110),
+  });
+}
+
+/* ============ helpers ============ */
+const R_EARTH=3958.8; // miles
+function distMi(a,b,c,d){
+  const toR=x=>x*Math.PI/180;
+  const dLat=toR(c-a),dLon=toR(d-b);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a))*Math.cos(toR(c))*Math.sin(dLon/2)**2;
+  return 2*R_EARTH*Math.asin(Math.sqrt(s));
+}
+const fmtTime=m=>m<60?`${m}m`:`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`;
+const fmtDist=mi=>mi<0.19?`${Math.round(mi*5280)} ft`:`${mi.toFixed(2)} mi`;
+
+/* ============ map ============ */
+const CONFLICT_MI=0.25, CONFLICT_FT=100;
+let map,intent=null,intentMarker=null,selectedId=null;
+const markers={};
+
+function enterApp(){
+  document.getElementById('entry').classList.add('gone');
+  document.getElementById('authView').classList.remove('on');
+  document.getElementById('app').classList.add('on');
+  setTimeout(initMap,60);
+}
+document.getElementById('liveBtn').addEventListener('click',enterApp);
+
+function orbIcon(ac,conflict,sel){
+  const unv=ac.trust==='unverified'?'unv':'';
+  if(ac.cls==='heli'){
+    const cls=['tri',unv,conflict?'conflict':'',sel?'sel':''].join(' ');
+    return L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,14],
+      html:`<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;transform:rotate(${ac.heading||0}deg)"><svg class="${cls}" width="22" height="20" viewBox="0 0 22 20"><path d="M11 2 L20 18 L2 18 Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg></div>`});
+  }
+  const size=24;
+  const cls=['orb',unv,conflict?'conflict':'',sel?'sel':''].join(' ');
+  return L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],
+    html:`<div class="${cls}" style="width:${size}px;height:${size}px"></div>`});
+}
+
+function popupHtml(ac,refDist){
+  const src=ac.trust==='observed'?'Observed (receiver network)'
+    :ac.trust==='verified'?'Self-reported · verified operator'
+    :ac.trust==='unverified'?'Self-reported · unverified':'';
+  return `<div class="pop">
+    <div class="pn">${ac.model}</div>
+    <div class="po">${ac.org} · ${ac.cls==='heli'?'Helicopter':'Drone'} · ${ac.id}</div>
+    ${src?`<div class="po" style="color:${ac.trust==='unverified'?'var(--intent-glow)':'var(--signal)'}">${src}</div>`:''}
+    <table>
+      <tr><td>Altitude</td><td>${ac.alt} ft AGL</td></tr>
+      <tr><td>Speed</td><td>${ac.speed} m/s</td></tr>
+      <tr><td>Heading</td><td>${ac.heading}&deg;</td></tr>
+      <tr><td>Flying for</td><td>${fmtTime(ac.mins)}</td></tr>
+      ${refDist!=null?`<tr><td>From intent</td><td>${fmtDist(refDist)}</td></tr>`:''}
+    </table></div>`;
+}
+
+// FLEET is what renders: the simulation by default, live API data when connected.
+let FLEET=AIRCRAFT;
+
+function syncMarkers(){
+  const ids=new Set(FLEET.map(a=>a.id));
+  for(const id of Object.keys(markers)){
+    if(!ids.has(id)){map.removeLayer(markers[id]);delete markers[id];
+      if(selectedId===id)selectedId=null}
+  }
+  for(const ac of FLEET){
+    if(markers[ac.id]){markers[ac.id].setLatLng([ac.lat,ac.lon])}
+    else{
+      const m=L.marker([ac.lat,ac.lon],{icon:orbIcon(ac,false,false)})
+        .addTo(map).bindPopup(()=>popupHtml(ac,intent?distMi(ac.lat,ac.lon,intent.lat,intent.lon):null));
+      m.on('click',()=>select(ac.id,false));
+      markers[ac.id]=m;
+    }
+  }
+  document.getElementById('stTotal').textContent=FLEET.length;
+  document.getElementById('stDrone').textContent=FLEET.filter(a=>a.cls==='drone').length;
+  document.getElementById('stHeli').textContent=FLEET.filter(a=>a.cls!=='drone').length;
+}
+
+function initMap(){
+  if(map)return;
+  map=L.map('map',{zoomControl:true,attributionControl:true})
+      .setView(isFinite(bootLat)&&isFinite(bootLon)?[bootLat,bootLon]:[35.5951,-82.5515],
+        isFinite(bootLat)?14:13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19
+  }).addTo(map);
+
+  syncMarkers();
+
+  map.on('click',e=>placeIntent(e.latlng));
+  map.on('moveend zoomend',refresh);
+  document.getElementById('iAlt').addEventListener('input',refresh);
+  document.getElementById('clearIntent').addEventListener('click',clearIntent);
+  refresh();
+  startLiveIfConfigured();
+}
+
+/* ============ API client + accounts ============
+   Served from the worker itself, the API is same-origin (base ''). Opened as a
+   local file, set ?api=https://ovrflight-api.<acct>.workers.dev once (persists);
+   ?api=off clears. Sim mode runs whenever there is no API or no session.       */
+(function(){
+  const qs=new URLSearchParams(location.search);
+  if(qs.get('api')==='off'){localStorage.removeItem('OVRFLIGHT_API');
+    localStorage.removeItem('OVRFLIGHT_TOKEN')}
+  else if(qs.get('api'))localStorage.OVRFLIGHT_API=qs.get('api').replace(/\/+$/,'');
+  if(qs.get('token'))localStorage.OVRFLIGHT_TOKEN=qs.get('token');
+})();
+const API_BASE=localStorage.OVRFLIGHT_API??(location.protocol.startsWith('http')?'':null);
+let TOKEN=localStorage.OVRFLIGHT_TOKEN||null;
+let ME=null, pollTimer=null;
+
+async function api(path,opts={}){
+  const headers={'Content-Type':'application/json',...(opts.headers||{})};
+  if(TOKEN)headers.Authorization='Bearer '+TOKEN;
+  const r=await fetch(API_BASE+path,{...opts,headers});
+  const d=(r.headers.get('Content-Type')||'').includes('json')?await r.json():await r.text();
+  if(!r.ok)throw new Error(d.error||('request failed ('+r.status+')'));
+  return d;
+}
+async function loadMe(){
+  if(API_BASE==null||!TOKEN){ME=null;return null}
+  try{ME=await api('/v1/auth/me')}
+  catch(e){TOKEN=null;localStorage.removeItem('OVRFLIGHT_TOKEN');ME=null}
+  return ME;
+}
+const $=id=>document.getElementById(id);
+
+/* ---- entry + auth wiring ---- */
+$('acctBtn').addEventListener('click',()=>{
+  if(ME){
+    postAuth();
+    if(ME.orgs.length)openDash(); // entry button says dashboard, deliver dashboard
+    return;
+  }
+  $('authView').classList.add('on');
+});
+$('authBack').addEventListener('click',()=>$('authView').classList.remove('on'));
+
+/* ---- NTHSKY SSO (ACCESS-STANDARD §3, §9.3, §9.6) ----
+   §9.6: this path runs mid-boot, in a DOM nobody designs against, on a screen
+   no one visits by hand. Every element touch below is null-guarded, because one
+   redesign away there WILL be a missing element - that exact crash cost ovrops
+   a silent dead login. Touch the minimum, guard everything.                    */
+const SSO_HUB='https://nthsky.ai';
+function ssoEl(id){return document.getElementById(id)}
+function ssoSay(msg){const m=ssoEl('ssoMsg');if(m)m.textContent=msg}
+
+// Always send the CANONICAL origin, never location.origin. The hub enforces an
+// open-redirect guard against the host registered for this site, so a ticket
+// requested from the workers.dev address (or any other host this app happens to
+// be served from) is refused with "Redirect does not belong to OVRFLIGHT".
+// Sending the canonical home also means SSO always lands people on the real
+// domain rather than stranding them on a fallback URL.
+const CANONICAL_ORIGIN='https://ovrflight.org';
+function goSSO(){
+  const redirect=CANONICAL_ORIGIN+'/';
+  location.href=`${SSO_HUB}/#sso?site=ovrflight&redirect=${encodeURIComponent(redirect)}`;
+}
+// Two doors to the same place: the entry screen (primary, since public signup
+// is closed and SSO is how most people arrive) and inside the sign-in card.
+['ssoBtn','ssoEntryBtn'].forEach(id=>{const b=$(id);if(b)b.addEventListener('click',goSSO)});
+
+// §9.3 client half: a hash change triggers its own async render that would wipe
+// a message set before it. Stash the reason; exactly one render consumes it.
+let AUTH_ERR=null;
+function showAuthError(msg){
+  AUTH_ERR=msg;
+  const v=ssoEl('authView'); if(v)v.classList.add('on');
+  const e=ssoEl('authErr'); if(e&&AUTH_ERR){e.textContent=AUTH_ERR;AUTH_ERR=null}
+}
+
+async function ssoCallback(ticket){
+  const land=ssoEl('ssoLanding'); if(land)land.classList.add('on');
+  try{
+    const r=await fetch((API_BASE??'')+'/auth/sso',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||('Sign-in failed ('+r.status+')'));
+    TOKEN=d.token;localStorage.OVRFLIGHT_TOKEN=TOKEN;
+    // Clear the ticket from the URL before anything else can read or log it.
+    history.replaceState(null,'',location.pathname+location.search);
+    await loadMe();
+    if(land)land.classList.remove('on');
+    postAuth();                       // §9.4: re-resolve identity, land by role
+  }catch(e){
+    if(land)land.classList.remove('on');
+    history.replaceState(null,'',location.pathname+location.search);
+    showAuthError(e.message||'NTHSKY sign-in failed');
+  }
+}
+$('tabIn').addEventListener('click',()=>authTab(true));
+$('tabUp').addEventListener('click',()=>authTab(false));
+function authTab(signin){
+  $('tabIn').classList.toggle('act',signin);$('tabUp').classList.toggle('act',!signin);
+  $('fIn').style.display=signin?'':'none';$('fUp').style.display=signin?'none':'';
+  $('authErr').textContent='';$('authNote').textContent='';
+}
+$('upDesig').addEventListener('change',()=>{
+  const d=$('upDesig').value;
+  $('agencyWrap').style.display=['first_responder','police','fire'].includes(d)?'':'none';
+  $('p107Wrap').style.display=d==='commercial'?'':'none';
+});
+$('doIn').addEventListener('click',async()=>{
+  $('authErr').textContent='';
+  try{
+    const d=await api('/v1/auth/login',{method:'POST',body:JSON.stringify({
+      email:$('inEmail').value.trim(),password:$('inPass').value})});
+    TOKEN=d.token;localStorage.OVRFLIGHT_TOKEN=TOKEN;
+    await loadMe();postAuth();
+  }catch(e){$('authErr').textContent=e.message}
+});
+$('doUp').addEventListener('click',async()=>{
+  $('authErr').textContent='';
+  try{
+    const d=await api('/v1/auth/signup',{method:'POST',body:JSON.stringify({
+      name:$('upName').value.trim(),email:$('upEmail').value.trim(),
+      password:$('upPass').value,designation:$('upDesig').value,
+      agency_name:$('upAgency').value.trim()||undefined,
+      part107_cert:$('upP107').value.trim()||undefined})});
+    TOKEN=d.token;localStorage.OVRFLIGHT_TOKEN=TOKEN;
+    await loadMe();
+    if(d.note){$('authNote').textContent=d.note+' Taking you in…';
+      setTimeout(postAuth,1800)}
+    else postAuth();
+  }catch(e){$('authErr').textContent=e.message}
+});
+function postAuth(){
+  enterApp();
+  updateAccountUI();
+  if(ME&&!ME.orgs.length)$('orgModal').classList.add('on');
+  startLive();
+}
+$('doOrg').addEventListener('click',async()=>{
+  $('orgErr').textContent='';
+  try{
+    await api('/v1/orgs',{method:'POST',body:JSON.stringify({
+      name:$('orgName').value.trim(),kind:$('orgKind').value})});
+    await loadMe();$('orgModal').classList.remove('on');
+    updateAccountUI();openSettings('sources');
+  }catch(e){$('orgErr').textContent=e.message}
+});
+
+function updateAccountUI(){
+  if(!ME)return;
+  $('acctChip').style.display='flex';
+  $('acctName').textContent=ME.user.name;
+  $('adminTabBtn').style.display=ME.user.platform_role==='super_admin'?'':'none';
+  $('acctBtn').textContent='Open dashboard';
+  $('entryNote').textContent='Signed in as '+ME.user.email+'.';
+  // Already signed in: the entry SSO door is noise. (To link an NTHSKY
+  // identity to a local account, sign out and come back through SSO - §9.2
+  // merges by email onto the same user id.)
+  const se=$('ssoEntryBtn'); if(se)se.style.display='none';
+}
+
+/* ---- live polling ---- */
+function startLive(){
+  if(API_BASE==null||!TOKEN||pollTimer)return;
+  const badge=document.querySelector('header .sim');
+  badge.textContent='LIVE · CONNECTED';badge.style.color='var(--glow)';
+  const poll=async()=>{
+    if(!map)return;
+    try{
+      const c=map.getCenter();
+      const d=await api(`/v1/nearby?lat=${c.lat.toFixed(5)}&lon=${c.lng.toFixed(5)}&radius_mi=2${vOnlyOn?'&verified_only=1':''}`);
+      FLEET=d.aircraft.map(a=>({
+        id:a.id,model:a.label||a.aircraft,org:a.org_name||'',cls:a.cls==='heli'?'heli':'drone',
+        trust:a.trust,
+        lat:a.lat,lon:a.lon,alt:Math.round(a.alt_agl_ft??a.alt_msl_ft??0),heading:a.heading||0,
+        speed:a.speed_mps||0,
+        mins:a.started_at?Math.max(1,Math.round((Date.now()-Date.parse(a.started_at))/60000)):1,
+      }));
+      syncMarkers();refresh();
+      badge.textContent='LIVE · CONNECTED';
+      if(pendingFocus){
+        const t=FLEET.find(a=>a.id===pendingFocus);
+        if(t){select(t.id,true);pendingFocus=null}
+      }
+    }catch(e){badge.textContent='LIVE · RECONNECTING'}
+  };
+  poll();pollTimer=setInterval(poll,3000);
+}
+function startLiveIfConfigured(){startLive()}
+
+/* ---- settings panel ---- */
+let sTab='profile';
+$('gearBtn').addEventListener('click',()=>{
+  const s=$('settings');
+  if(s.classList.contains('on'))s.classList.remove('on');
+  else openSettings(sTab);
+});
+document.querySelectorAll('.stabs button').forEach(b=>
+  b.addEventListener('click',()=>openSettings(b.dataset.t)));
+function openSettings(tab){
+  sTab=tab;$('settings').classList.add('on');
+  document.querySelectorAll('.stabs button').forEach(b=>
+    b.classList.toggle('act',b.dataset.t===tab));
+  ({profile:renderProfile,org:renderOrg,sources:renderSources,guide:renderGuide,admin:renderAdmin}[tab])();
+}
+const esc=s=>String(s??'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const copy=t=>navigator.clipboard&&navigator.clipboard.writeText(t);
+
+function renderProfile(){
+  const u=ME.user;
+  const pill=u.designation_status==='active'?'<span class="pill ok">active</span>'
+    :u.designation_status==='pending'?'<span class="pill warn">pending review</span>'
+    :'<span class="pill off">rejected</span>';
+  $('sbody').innerHTML=`
+    <h4>Profile</h4>
+    <div class="kv"><span class="k">Name</span><span class="v">${esc(u.name)}</span></div>
+    <div class="kv"><span class="k">Email</span><span class="v">${esc(u.email)}</span></div>
+    <div class="kv"><span class="k">Designation</span><span class="v">${esc(u.designation.replace('_',' '))} ${pill}</span></div>
+    ${u.part107_cert?`<div class="kv"><span class="k">Part 107</span><span class="v">${esc(u.part107_cert)} ${u.part107_verified?'<span class="pill ok">FAA verified</span>':'<span class="pill warn">check pending</span>'}</span></div>`:''}
+    <div class="kv"><span class="k">Platform role</span><span class="v">${esc(u.platform_role)}</span></div>
+    <button class="btn2" id="soBtn" style="margin-top:22px">Sign out</button>`;
+  $('soBtn').addEventListener('click',async()=>{
+    try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}
+    localStorage.removeItem('OVRFLIGHT_TOKEN');location.reload();
+  });
+}
+
+function renderOrg(){
+  if(!ME.orgs.length){$('sbody').innerHTML='<h4>Organization</h4><div class="sub2">No organization yet.</div>';return}
+  const o=ME.orgs[0];
+  $('sbody').innerHTML=`
+    <h4>Organization</h4>
+    <div class="kv"><span class="k">Name</span><span class="v">${esc(o.name)}</span></div>
+    <div class="kv"><span class="k">Type</span><span class="v">${esc(o.kind)}</span></div>
+    <div class="kv"><span class="k">Your role</span><span class="v">${esc(o.org_role)}</span></div>
+    <h4>Access &amp; sharing</h4>
+    <div class="f">
+      <label>Who can see this org's flights (beyond the presence floor)</label>
+      <select id="setVis">
+        <option value="all"${o.default_visibility==='all'?' selected':''}>All valid users</option>
+        <option value="team"${o.default_visibility==='team'?' selected':''}>Only my teams</option>
+        <option value="org_share"${o.default_visibility==='org_share'?' selected':''}>Only orgs I share with</option>
+      </select>
+      <label>Live feed</label>
+      <select id="setFeed">
+        <option value="1"${o.feed_enabled?' selected':''}>Broadcasting (visible on the map)</option>
+        <option value="0"${o.feed_enabled?'':' selected'}>Paused (hidden from the map)</option>
+      </select>
+      ${o.org_role==='admin'?'<button class="btn" id="orgSave">Save</button>':''}
+      <div class="errmsg" id="orgSaveErr"></div><div class="notemsg" id="orgSaveOk"></div>
+    </div>`;
+  const b=$('orgSave');
+  if(b)b.addEventListener('click',async()=>{
+    $('orgSaveErr').textContent='';$('orgSaveOk').textContent='';
+    try{
+      await api('/v1/orgs/'+o.id,{method:'PATCH',body:JSON.stringify({
+        default_visibility:$('setVis').value,feed_enabled:+$('setFeed').value})});
+      await loadMe();$('orgSaveOk').textContent='Saved.';
+    }catch(e){$('orgSaveErr').textContent=e.message}
+  });
+}
+
+async function renderSources(){
+  const origin=API_BASE||location.origin;
+  $('sbody').innerHTML='<h4>Linked sources</h4><div class="sub2">Loading…</div>';
+  let keys=[];
+  try{keys=(await api('/v1/keys')).keys}catch(e){}
+  const active=keys.filter(k=>!k.revoked_at);
+  const rows=active.map(k=>`
+    <div class="srcrow">
+      <div class="t"><b>${esc(k.label)}</b>
+        ${k.last_used_at?'<span class="pill ok">linked · data received</span>':'<span class="pill off">no data yet</span>'}
+      </div>
+      <div class="sub2">Key ${esc(k.id.slice(0,8))}… · created ${esc((k.created_at||'').slice(0,10))}
+        ${k.last_used_at?' · last data '+esc(k.last_used_at)+' UTC':''}</div>
+      <button class="btn2 slim" data-rev="${esc(k.id)}" style="margin-top:8px">Revoke</button>
+    </div>`).join('')||'<div class="sub2">No API keys yet. Create one below to link your first source.</div>';
+  $('sbody').innerHTML=`
+    <h4>Linked sources</h4>
+    ${rows}
+    <div class="srcrow"><div class="t"><b>ADS-B Network (OpenSky)</b>
+      <span class="pill ok">platform feed</span></div>
+      <div class="sub2">Helicopters and small aircraft in the region, pulled automatically.
+      Always on, visible to everyone.</div></div>
+    <h4>Add a source</h4>
+    <div class="sub2">Create a key, then point any of these at us. One key per
+    source (drone, dock, software) keeps the list readable.</div>
+    <div class="inline"><input id="newKeyLabel" placeholder="Source name, e.g. M350 dock">
+      <button class="btn slim" id="mkKey">Create key</button></div>
+    <div id="secretOut"></div>
+    <h4>Ingest endpoints</h4>
+    <div class="sub2">Direct JSON telemetry:</div>
+    <div class="endpoint"><span>POST ${esc(origin)}/v1/telemetry</span>
+      <button class="copyb" data-c="${esc(origin)}/v1/telemetry">copy</button></div>
+    <div class="sub2" style="margin-top:10px">TAK / CoT XML (DroneSense TAK integration, ATAK):</div>
+    <div class="endpoint"><span>POST ${esc(origin)}/v1/ingest/cot</span>
+      <button class="copyb" data-c="${esc(origin)}/v1/ingest/cot">copy</button></div>
+    <div class="sub2" style="margin-top:10px">Quick test (paste in a terminal, key filled in after you create one):</div>
+    <div class="endpoint" style="white-space:pre-wrap"><span id="curlSnip">curl -X POST ${esc(origin)}/v1/telemetry -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" -d '{"aircraft":"drone-01","class":"drone","lat":35.5951,"lon":-82.5515,"alt_agl_ft":200}'</span>
+      <button class="copyb" id="curlCopy">copy</button></div>`;
+  $('mkKey').addEventListener('click',async()=>{
+    const label=$('newKeyLabel').value.trim()||'default';
+    if(!ME.orgs.length)return;
+    try{
+      const d=await api('/v1/keys',{method:'POST',body:JSON.stringify({org_id:ME.orgs[0].id,label})});
+      $('secretOut').innerHTML=`<div class="secretbox"><span class="warn2">Copy this now - it is shown exactly once</span>${esc(d.secret)}
+        <div style="margin-top:8px"><button class="copyb" data-c="${esc(d.secret)}">copy key</button></div></div>`;
+      $('curlSnip').textContent=$('curlSnip').textContent.replace('YOUR_KEY',d.secret);
+      bindCopies();
+    }catch(e){$('secretOut').innerHTML='<div class="errmsg">'+esc(e.message)+'</div>'}
+  });
+  document.querySelectorAll('[data-rev]').forEach(b=>b.addEventListener('click',async()=>{
+    await api('/v1/keys/'+b.dataset.rev,{method:'DELETE'});renderSources();
+  }));
+  $('curlCopy').addEventListener('click',()=>copy($('curlSnip').textContent));
+  bindCopies();
+}
+function bindCopies(){
+  document.querySelectorAll('.copyb[data-c]').forEach(b=>
+    b.onclick=()=>{copy(b.dataset.c);b.textContent='copied';setTimeout(()=>b.textContent='copy',1200)});
+}
+
+/* ---- Guide: how the platform works, in plain language ---- */
+const GUIDE=[
+{t:'What OVRFLIGHT is',b:`<p>OVRFLIGHT is one shared, live map of who is flying in low
+altitude airspace: drones, helicopters, and small aircraft below roughly 1,500 feet.
+Any legitimate operator can put their aircraft on the map in seconds, from a phone, a
+dock, or their flight software. Everyone sees who else is operating near them.</p>
+<p>It exists because that information is currently scattered across dozens of private
+apps that do not talk to each other. One picture is safer than fifty.</p>`},
+{t:'The trust ladder: how you know a dot is real',b:`<p>Every aircraft carries one of
+three trust levels, assigned automatically when its data arrives:</p>
+<ul>
+<li><b class="hl">Observed.</b> An independent receiver physically detected the
+aircraft's broadcast (aircraft transponders today, drone Remote ID coming). Nobody can
+fake a broadcast their aircraft is not making. Ground truth.</li>
+<li><b>Verified.</b> The operator reported their own position and we checked who they
+are: an FAA validated Part 107 certificate, or a reviewed public safety agency. Full
+brightness on the map.</li>
+<li><b>Unverified.</b> Someone reported a position but their account is not checked
+yet. Still shown, because more information is safer than less, but dimmed and tagged
+UNVERIFIED everywhere it appears.</li>
+</ul>`},
+{t:'The Verified only switch',b:`<p>One click removes unverified dots from your view.
+Two things matter:</p>
+<ul>
+<li><b>It is always your choice.</b> Nothing is hidden from you by default. You start
+with the complete picture and narrow it only if you want to.</li>
+<li><b>It never removes Observed aircraft.</b> A drone that a receiver physically
+detected stays on your screen no matter what. Many careless operators do not realize
+their drone broadcasts Remote ID. Their aircraft shows up bright and labeled Observed
+even when every unproven claim is filtered out.</li>
+</ul>
+<p>At an incident scene your screen can show your own aircraft, cooperating operators
+who checked in voluntarily, and any unknown drone physically broadcasting nearby,
+whether its pilot wants to be seen or not.</p>`},
+{t:'Why fake traffic does not work',b:`<p>Could someone paint fifty fake drones over
+their neighborhood? The system is built so that fails:</p>
+<ul>
+<li><b>Nothing is anonymous.</b> Every position traces to a registered account, and for
+commercial accounts an FAA certificate number. Faking data means documented fraud under
+an identity that gets banned.</li>
+<li><b>Aircraft caps.</b> An unchecked account can show only a handful of aircraft in
+one area at once. A hobbyist account: two. Verification raises the limit.</li>
+<li><b>Rate limits</b> stop floods outright.</li>
+<li><b>The sky is the final check.</b> Fake dots cannot fly. Receiver detection shows
+what is really airborne, so painted traffic that nothing corroborates stands out as
+exactly what it is, dimmed and one click from gone.</li>
+</ul>`},
+{t:'What public safety accounts get',b:`<p>Police and fire sign ups are held for human
+review before the elevated designation activates, so the tier means something. Once
+active:</p>
+<ul>
+<li><b>The full picture.</b> All traffic, all trust levels, filters under your
+control.</li>
+<li><b>Presence without exposure.</b> Your flights appear to other operators as
+presence so they deconflict around you, but identity and mission detail are visible
+only to peers at your tier and qualifying operators. Your agency can pause its outward
+feed entirely. You are never invisible to your own team.</li>
+<li><b>Standard formats.</b> The platform speaks TAK (Cursor on Target), so feeds flow
+into and out of tools your teams may already use, including DroneSense TAK
+integrations.</li>
+</ul>`},
+{t:'Every flight becomes a record',b:`<p>Every flight is logged automatically: start,
+end, duration, altitudes, distance, and the complete track. Records download as
+spreadsheets from the Dashboard. The platform retains the full track permanently, so
+the history is there when an incident review needs it.</p>`},
+{t:'Getting your team connected',b:`<p>Three ways aircraft get on the map, use any or
+all:</p>
+<ul>
+<li><b>A phone.</b> Any signed in pilot taps Start Flight and their position reports
+live until they end it. Thirty seconds, no setup.</li>
+<li><b>Your flight software.</b> Platforms with TAK output (like DroneSense) point at
+our CoT endpoint with a connection key from Settings, Sources. Telemetry flows
+automatically.</li>
+<li><b>Direct connection.</b> Docks and custom systems post to the telemetry endpoint
+with the same key. The Sources tab has copy and paste examples.</li>
+</ul>
+<p>Everything your organization flies is then live on the shared picture, logged, and
+exportable.</p>`},
+];
+let guideArt=null;
+function renderGuide(){
+  if(guideArt==null){
+    $('sbody').innerHTML='<h4>How OVRFLIGHT works</h4>'+GUIDE.map((g,i)=>
+      `<div class="srcrow gitem" data-g="${i}"><div class="t"><b>${g.t}</b></div></div>`).join('');
+    document.querySelectorAll('[data-g]').forEach(el=>el.addEventListener('click',()=>{
+      guideArt=+el.dataset.g;renderGuide();
+    }));
+  }else{
+    const g=GUIDE[guideArt];
+    $('sbody').innerHTML=`<button class="btn2 slim" id="gBack">&larr; All topics</button>
+      <h4 style="margin-top:16px">${g.t}</h4><div class="gart">${g.b}</div>`;
+    $('gBack').addEventListener('click',()=>{guideArt=null;renderGuide()});
+  }
+}
+
+async function renderAdmin(){
+  $('sbody').innerHTML='<h4>Verification queue</h4><div class="sub2">Loading…</div>';
+  let v=[];
+  try{v=(await api('/v1/verifications')).verifications}catch(e){
+    $('sbody').innerHTML='<h4>Verification queue</h4><div class="errmsg">'+esc(e.message)+'</div>';return}
+  $('sbody').innerHTML='<h4>Verification queue</h4>'+(v.map(x=>`
+    <div class="srcrow">
+      <div class="t"><b>${esc(x.name)}</b><span class="pill warn">${esc(x.requested_designation.replace('_',' '))}</span></div>
+      <div class="sub2">${esc(x.email)}${x.agency_name?' · '+esc(x.agency_name):''}
+        ${x.part107_cert?' · Part 107: <b>'+esc(x.part107_cert)+'</b>':''}
+        · requested ${esc((x.created_at||'').slice(0,10))}</div>
+      ${x.requested_designation==='commercial_verified'
+        ?'<div class="sub2">Check the number on the <a href="https://amsrvs.registry.faa.gov/airmeninquiry/" target="_blank" style="color:var(--signal)">FAA Airmen Inquiry</a>, confirm the name matches, then approve.</div>':''}
+      <div class="inline">
+        <button class="btn slim" data-ap="${esc(x.id)}">Approve</button>
+        <button class="btn2 slim" data-rj="${esc(x.id)}">Reject</button>
+      </div>
+    </div>`).join('')||'<div class="sub2">Nothing pending. All clear.</div>');
+  document.querySelectorAll('[data-ap]').forEach(b=>b.addEventListener('click',async()=>{
+    await api('/v1/verifications/'+b.dataset.ap+'/approve',{method:'POST'});renderAdmin();}));
+  document.querySelectorAll('[data-rj]').forEach(b=>b.addEventListener('click',async()=>{
+    await api('/v1/verifications/'+b.dataset.rj+'/reject',{method:'POST'});renderAdmin();}));
+}
+
+/* ---- verified-only toggle (map panel) ---- */
+let vOnlyOn=false;
+$('vOnly').addEventListener('click',()=>{
+  vOnlyOn=!vOnlyOn;
+  $('vOnly').textContent='Verified only: '+(vOnlyOn?'on':'off');
+  $('vOnly').style.color=vOnlyOn?'var(--glow)':'var(--steel)';
+  $('vOnly').style.borderColor=vOnlyOn?'var(--deep)':'var(--graphite)';
+});
+
+/* ---- Start Flight: browser GPS position reporting ---- */
+let flight=null; // {watchId,timer,lastFix,name,cls}
+
+$('flyBtn').addEventListener('click',()=>{
+  if(flight){endFlight();return}
+  if(API_BASE==null||!TOKEN)return;
+  if(ME&&!ME.orgs.length){$('orgModal').classList.add('on');return}
+  $('flyName').value=localStorage.OVRFLIGHT_CALLSIGN||'';
+  $('flyModal').classList.add('on');
+});
+$('flyCancel').addEventListener('click',()=>$('flyModal').classList.remove('on'));
+
+$('flyGo').addEventListener('click',()=>{
+  $('flyErr').textContent='';
+  if(!navigator.geolocation){$('flyErr').textContent='This device has no location support.';return}
+  const name=$('flyName').value.trim()||((ME&&ME.user.name)||'Pilot');
+  localStorage.OVRFLIGHT_CALLSIGN=name;
+  const cls=$('flyClass').value;
+  $('pillAlt').textContent=Math.max(0,Math.round(+$('flyAlt').value||200));
+  const watchId=navigator.geolocation.watchPosition(fix=>{
+    if(!flight)return;
+    flight.lastFix=fix;
+    $('pillGps').textContent='GPS ±'+Math.round(fix.coords.accuracy)+'m';
+  },e=>{
+    if(flight)$('pillGps').textContent='GPS lost';
+    else{$('flyErr').textContent='Location was denied or unavailable. Allow location for this site and try again.'}
+  },{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+
+  flight={watchId,name,cls,lastFix:null,timer:null,centered:false};
+  flight.timer=setInterval(reportFix,4000);
+  $('flyModal').classList.remove('on');
+  $('pillName').textContent=name;
+  $('flyPill').classList.add('on');
+  $('flyBtn').textContent='End Flight';$('flyBtn').classList.add('flying');
+});
+
+async function reportFix(){
+  if(!flight||!flight.lastFix)return;
+  const c=flight.lastFix.coords;
+  try{
+    await api('/v1/report',{method:'POST',body:JSON.stringify({
+      aircraft:flight.name,label:flight.name,class:flight.cls,
+      lat:c.latitude,lon:c.longitude,
+      alt_agl_ft:+$('pillAlt').textContent,
+      heading:c.heading!=null&&isFinite(c.heading)?Math.round(c.heading):null,
+      speed_mps:c.speed!=null&&isFinite(c.speed)?+c.speed.toFixed(1):null,
+    })});
+    if(!flight.centered&&map){map.setView([c.latitude,c.longitude],14);flight.centered=true}
+  }catch(e){$('pillGps').textContent='send failed, retrying'}
+}
+$('altUp').addEventListener('click',()=>{
+  $('pillAlt').textContent=Math.min(1500,+$('pillAlt').textContent+25)});
+$('altDown').addEventListener('click',()=>{
+  $('pillAlt').textContent=Math.max(0,+$('pillAlt').textContent-25)});
+$('flyEnd').addEventListener('click',endFlight);
+function endFlight(){
+  if(!flight)return;
+  navigator.geolocation.clearWatch(flight.watchId);
+  clearInterval(flight.timer);
+  flight=null;
+  $('flyPill').classList.remove('on');
+  $('flyBtn').textContent='Start Flight';$('flyBtn').classList.remove('flying');
+}
+
+/* ---- dashboard ---- */
+let dashTimer=null,dMini=null,dLayer=null,dMarker=null,dCircle=null;
+let dFilter={lat:null,lon:null,r:0},dMineOnly=false;
+
+$('dashBtn').addEventListener('click',openDash);
+function backToMap(){
+  $('dash').classList.remove('on');clearInterval(dashTimer);dashTimer=null;
+  $('settings').classList.remove('on');
+}
+$('dashClose').addEventListener('click',backToMap);
+$('chipMap').addEventListener('click',backToMap);
+document.querySelector('header .brand').addEventListener('click',backToMap);
+
+function openDash(){
+  $('dash').classList.add('on');
+  $('settings').classList.remove('on');
+  $('dOrg').textContent=ME&&ME.orgs.length?ME.orgs[0].name:'';
+  if(!dMini)setTimeout(initMini,80);
+  refreshStats();refreshLive();refreshLogs();
+  if(!dashTimer)dashTimer=setInterval(refreshLive,5000);
+}
+function initMini(){
+  dMini=L.map('miniMap',{zoomControl:false,attributionControl:false}).setView([39.5,-96.5],4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    {subdomains:'abcd',maxZoom:19}).addTo(dMini);
+  dLayer=L.layerGroup().addTo(dMini);
+  dMini.on('click',e=>{
+    dFilter.lat=e.latlng.lat;dFilter.lon=e.latlng.lng;
+    if(!dFilter.r)dFilter.r=150;
+    syncRadChips();drawDFilter();refreshLive();
+    $('dClear').style.display='';
+  });
+}
+function syncRadChips(){
+  document.querySelectorAll('#dRad button').forEach(b=>
+    b.classList.toggle('act',+b.dataset.r===dFilter.r));
+}
+function drawDFilter(){
+  if(dMarker){dMini.removeLayer(dMarker);dMarker=null}
+  if(dCircle){dMini.removeLayer(dCircle);dCircle=null}
+  if(dFilter.lat==null||!dFilter.r)return;
+  dMarker=L.marker([dFilter.lat,dFilter.lon],{icon:L.divIcon({className:'',iconSize:[18,18],
+    iconAnchor:[9,9],html:'<div class="orb intent" style="width:18px;height:18px"></div>'}),
+    interactive:false}).addTo(dMini);
+  dCircle=L.circle([dFilter.lat,dFilter.lon],{radius:dFilter.r*1609.34,color:'#FF8A3D',
+    weight:1,fillColor:'#FF8A3D',fillOpacity:.06}).addTo(dMini);
+}
+document.querySelectorAll('#dRad button').forEach(b=>b.addEventListener('click',()=>{
+  dFilter.r=+b.dataset.r;
+  if(dFilter.r===0){dFilter.lat=null;dFilter.lon=null;$('dClear').style.display='none'}
+  syncRadChips();drawDFilter();refreshLive();
+}));
+$('dClear').addEventListener('click',()=>{
+  dFilter={lat:null,lon:null,r:0};syncRadChips();drawDFilter();refreshLive();
+  $('dClear').style.display='none';
+});
+$('dMine').addEventListener('click',()=>{
+  dMineOnly=!dMineOnly;
+  $('dMine').textContent='My org only: '+(dMineOnly?'on':'off');
+  refreshLive();
+});
+let dVerOnly=false;
+$('dVer').addEventListener('click',()=>{
+  dVerOnly=!dVerOnly;
+  $('dVer').textContent='Verified only: '+(dVerOnly?'on':'off');
+  refreshLive();
+});
+let dQT=null;
+$('dQ').addEventListener('input',()=>{clearTimeout(dQT);dQT=setTimeout(refreshLive,350)});
+
+async function refreshLive(){
+  if(!$('dash').classList.contains('on')||API_BASE==null||!TOKEN)return;
+  const parts=[];
+  if(dMineOnly&&ME.orgs.length)parts.push('org_id='+ME.orgs[0].id);
+  if(dVerOnly)parts.push('verified_only=1');
+  const q=$('dQ').value.trim();
+  if(q)parts.push('q='+encodeURIComponent(q));
+  if(dFilter.lat!=null&&dFilter.r>0)
+    parts.push(`lat=${dFilter.lat.toFixed(4)}&lon=${dFilter.lon.toFixed(4)}&radius_mi=${dFilter.r}`);
+  let d;
+  try{d=await api('/v1/live'+(parts.length?'?'+parts.join('&'):''))}catch(e){return}
+  $('dLiveCount').textContent=d.count+' active';
+  $('dLiveT').innerHTML=d.aircraft.map(a=>{
+    const alt=a.alt_agl_ft??a.alt_msl_ft;
+    const age=Math.max(0,Math.round((Date.now()-Date.parse(a.ts))/1000));
+    const tpill=a.trust==='observed'?' <span class="pill ok">observed</span>'
+      :a.trust==='unverified'?' <span class="pill warn">unverified</span>':' <span class="pill ok">verified</span>';
+    return `<tr><td>${esc(a.label||a.aircraft)}${tpill}</td><td>${esc(a.org_name||'')}</td>
+      <td>${a.cls==='heli'?'Heli':a.cls==='fixed_wing'?'Fixed wing':'Drone'}</td>
+      <td>${alt!=null?Math.round(alt):'<span class="mut">?</span>'}</td>
+      <td>${a.speed_mps!=null?a.speed_mps+' m/s':'<span class="mut">?</span>'}</td>
+      <td class="mut">${a.lat.toFixed(3)}, ${a.lon.toFixed(3)}</td>
+      <td class="mut">${age}s ago</td>
+      <td><a class="jump" target="_blank"
+        href="?focus=${encodeURIComponent(a.id)}&lat=${a.lat}&lon=${a.lon}">Live Map</a></td></tr>`;
+  }).join('')||'<tr><td colspan="8" class="mut">Nothing in the air matching this filter.</td></tr>';
+  if(dLayer){
+    dLayer.clearLayers();
+    for(const a of d.aircraft){
+      L.circleMarker([a.lat,a.lon],{radius:a.cls==='heli'?5:3.5,
+        color:a.cls==='heli'?'#FF5C5C':'#21B9BA',weight:1,
+        fillColor:a.cls==='heli'?'#FF5C5C':'#66E6E0',fillOpacity:.85}).addTo(dLayer);
+    }
+  }
+}
+
+async function refreshStats(){
+  if(!ME||!ME.orgs.length)return;
+  let s;
+  try{s=await api('/v1/stats?org_id='+ME.orgs[0].id)}catch(e){return}
+  const t=s.totals;
+  const hrs=(t.duration_s/3600).toFixed(1);
+  const mi=(t.distance_m/1609.34).toFixed(1);
+  let adsb='<div class="tile err"><b>No polls yet</b><span>ADS-B connector</span></div>';
+  if(s.adsb_status){
+    const a=s.adsb_status;
+    adsb=a.ok
+      ?`<div class="tile"><b>${a.aircraft}</b><span>ADS-B aircraft · last poll ${esc((a.ts||'').slice(11,16))}Z</span></div>`
+      :`<div class="tile err"><b>${a.http?'HTTP '+esc(String(a.http)):esc(a.error||'error')}${a.auth?'':' · no credentials'}</b><span>ADS-B connector · ${esc((a.ts||'').slice(11,16))}Z</span></div>`;
+  }
+  $('dTiles').innerHTML=`
+    <div class="tile"><b>${t.flights}</b><span>Flights total</span></div>
+    <div class="tile"><b>${t.flights_today}</b><span>Flights today</span></div>
+    <div class="tile"><b>${hrs}</b><span>Hours flown</span></div>
+    <div class="tile"><b>${mi}</b><span>Miles flown</span></div>
+    <div class="tile"><b>${t.aircraft}</b><span>Aircraft</span></div>
+    <div class="tile"><b>${s.members.length}</b><span>Team members</span></div>
+    <div class="tile"><b>${t.active_keys}</b><span>Linked sources</span></div>
+    ${adsb}`;
+  $('dTeamT').innerHTML=s.members.map(m=>
+    `<tr><td>${esc(m.name)}</td><td>${esc(m.email)}</td>
+     <td>${esc(m.designation.replace('_',' '))}</td><td>${esc(m.org_role)}</td></tr>`).join('');
+  $('dMissions').innerHTML=s.missions.length
+    ?'<table class="dtable"><thead><tr><th>Mission</th><th>Status</th><th>Window (UTC)</th><th>Area</th></tr></thead><tbody>'+
+      s.missions.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.status)}</td>
+        <td class="mut">${esc(m.window_start.slice(0,16))} → ${esc(m.window_end.slice(0,16))}</td>
+        <td class="mut">${m.center_lat.toFixed(3)}, ${m.center_lon.toFixed(3)} · r ${(m.radius_m/1609.34).toFixed(1)} mi</td></tr>`).join('')+
+      '</tbody></table>'
+    :'<div class="mut" style="font-size:12px;padding:8px 0">No missions planned. Missions are pre-planned flight areas others can deconflict against.</div>';
+}
+
+async function refreshLogs(){
+  let d;
+  try{d=await api('/v1/flights')}catch(e){return}
+  $('dLogT').innerHTML=d.flights.slice(0,25).map(f=>
+    `<tr><td>${esc(f.aircraft_key)}</td>
+     <td>${f.class==='heli'?'Heli':f.class==='fixed_wing'?'Fixed wing':'Drone'}</td>
+     <td class="mut">${esc((f.started_at||'').slice(0,16).replace('T',' '))}</td>
+     <td>${fmtTime(Math.max(1,Math.round((f.duration_s||0)/60)))}</td>
+     <td>${Math.round(f.max_alt_agl_ft||0)} ft</td>
+     <td>${((f.distance_m||0)/1609.34).toFixed(2)} mi</td>
+     <td>${f.point_count}</td></tr>`).join('')
+    ||'<tr><td colspan="7" class="mut">No flights logged yet. Every flight that ends lands here automatically.</td></tr>';
+}
+
+$('dCsv').addEventListener('click',async()=>{
+  const r=await fetch(API_BASE+'/v1/flights.csv',{headers:{Authorization:'Bearer '+TOKEN}});
+  const blob=await r.blob();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='ovrflight-flights.csv';a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ---- deep link: ?focus=<aircraft id>&lat=&lon= (from dashboard Live Map) ---- */
+const bootQS=new URLSearchParams(location.search);
+let pendingFocus=bootQS.get('focus')||null;
+// parseFloat, not Number: Number(null) is 0 and would center the map at 0,0
+const bootLat=parseFloat(bootQS.get('lat')),bootLon=parseFloat(bootQS.get('lon'));
+
+/* ---- signup gate: reflect the server's switch, never guess ----
+   The worker is the real gate (it fails closed); this only keeps the UI honest
+   so nobody fills in a form that cannot succeed. Unreachable server = assume
+   closed, matching the server's own bias.                                     */
+async function applySignupGate(){
+  let open=false;
+  try{
+    const r=await fetch((API_BASE??'')+'/health');
+    open=!!(await r.json()).signups_open;
+  }catch(e){open=false}
+  const tab=$('tabUp'),note=$('closedNote');
+  if(!open){
+    if(tab)tab.style.display='none';
+    if(note)note.style.display='';
+    authTab(true);           // never leave the hidden signup form showing
+    // The entry button must not offer an account it cannot create.
+    const ab=$('acctBtn'); if(ab&&!ME)ab.textContent='Sign in';
+  }else{
+    if(tab)tab.style.display='';
+    if(note)note.style.display='none';
+  }
+}
+applySignupGate();
+
+/* ---- boot: SSO callback first, else restore session ----
+   The hub lands us on redirect#nthsky_ticket=<ticket>. Check that before
+   anything else so an arriving ticket is never lost to a normal boot.        */
+const ssoTicket=(location.hash.match(/nthsky_ticket=([^&]+)/)||[])[1];
+if(ssoTicket){
+  ssoCallback(decodeURIComponent(ssoTicket));
+}else
+loadMe().then(()=>{
+  if(ME){
+    updateAccountUI();
+    if(pendingFocus||isFinite(bootLat))postAuth();
+  }
+});
+
+function placeIntent(ll){
+  intent={lat:ll.lat,lon:ll.lng};
+  if(intentMarker)intentMarker.setLatLng(ll);
+  else{
+    intentMarker=L.marker(ll,{icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],
+      html:'<div class="orb intent" style="width:30px;height:30px"></div>'}),interactive:false}).addTo(map);
+  }
+  document.getElementById('intentCard').classList.add('on');
+  document.getElementById('sortRef').textContent='your intent area';
+  document.getElementById('hint').style.display='none';
+  refresh();
+}
+function clearIntent(){
+  intent=null;
+  if(intentMarker){map.removeLayer(intentMarker);intentMarker=null}
+  document.getElementById('intentCard').classList.remove('on');
+  document.getElementById('sortRef').textContent='map center';
+  document.getElementById('hint').style.display='';
+  refresh();
+}
+
+function select(id,pan){
+  selectedId=id;
+  const ac=FLEET.find(a=>a.id===id);
+  if(!ac)return;
+  if(pan)map.panTo([ac.lat,ac.lon]);
+  markers[id].openPopup();
+  refresh();
+}
+
+function refresh(){
+  if(!map)return;
+  const c=map.getCenter();
+  const ref=intent||{lat:c.lat,lon:c.lng};
+  const iAlt=+document.getElementById('iAlt').value||0;
+  const bounds=map.getBounds().pad(0.05);
+
+  const rows=FLEET.map(ac=>{
+    const d=distMi(ac.lat,ac.lon,ref.lat,ref.lon);
+    const conflict=!!intent&&d<=CONFLICT_MI&&Math.abs(ac.alt-iAlt)<=CONFLICT_FT;
+    return{ac,d,conflict,inView:bounds.contains([ac.lat,ac.lon])};
+  });
+
+  // markers: conflict + selection styling
+  for(const r of rows){
+    const mk=markers[r.ac.id];
+    if(mk)mk.setIcon(orbIcon(r.ac,r.conflict,r.ac.id===selectedId));
+  }
+
+  // intent readout
+  if(intent){
+    document.getElementById('iNear').textContent=rows.filter(r=>r.d<=2).length;
+    document.getElementById('iConf').textContent=rows.filter(r=>r.conflict).length;
+  }
+
+  // list: aircraft in view (conflicts always shown), conflicts first, then by distance
+  const vis=rows.filter(r=>r.inView||r.conflict)
+    .sort((a,b)=>(b.conflict-a.conflict)||(a.d-b.d));
+
+  const list=document.getElementById('list');
+  list.innerHTML='';
+  for(const r of vis){
+    const el=document.createElement('div');
+    el.className='row'+(r.conflict?' conflict':'')+(r.ac.id===selectedId?' sel':'');
+    el.innerHTML=`
+      ${r.ac.cls==='heli'
+        ?'<svg class="hdot" width="16" height="14" viewBox="0 0 22 20"><path d="M11 2 L20 18 L2 18 Z" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round"/></svg>'
+        :'<div class="dot"></div>'}
+      <div class="meta">
+        <div class="name">${r.ac.model}</div>
+        <div class="sub"><span>${fmtTime(r.ac.mins)} flying</span>
+          <span class="alt">${r.ac.alt} ft AGL</span>
+          ${r.ac.trust==='unverified'?'<span style="color:var(--intent-glow)">UNVERIFIED</span>':''}
+          ${r.ac.trust==='observed'?'<span style="color:var(--signal)">OBSERVED</span>':''}</div>
+        ${r.conflict?'<span class="tag">CONFLICT</span>':''}
+      </div>
+      <div class="dist">${fmtDist(r.d)}<small>${r.ac.cls==='heli'?'HELI':'DRONE'}</small></div>`;
+    el.addEventListener('click',()=>select(r.ac.id,true));
+    list.appendChild(el);
+  }
+  if(!vis.length){
+    list.innerHTML='<div style="padding:24px 16px;font-size:12px;color:var(--steel)">No aircraft in view. Zoom out or pan toward Asheville.</div>';
+  }
+}
+</script>
+</body>
+</html>

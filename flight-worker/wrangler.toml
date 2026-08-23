@@ -1,0 +1,51 @@
+# OVRFLIGHT API Worker. Deployed by GitHub Actions on push to main
+# (job "flight-worker" in .github/workflows/deploy.yml).
+# Serves on workers.dev until the ovrflight.org domain exists.
+
+name = "ovrflight-api"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+
+# ADS-B connector (OpenSky Network). Anonymous polling runs every 5th minute;
+# add OPENSKY_CLIENT_ID / OPENSKY_CLIENT_SECRET as encrypted Worker secrets to
+# poll every minute. Bbox is lamin,lomin,lamax,lomax (default: Asheville region).
+[vars]
+ADSB_ENABLED = "true"
+ADSB_BBOX = "35.30,-82.85,35.85,-82.25"
+
+# Every minute: ADS-B poll. The 07:37 UTC tick doubles as the 💾 nightly D1
+# backup - the account is at the Workers Free 5-cron limit, so no second cron.
+[triggers]
+crons = ["* * * * *"]
+
+# The Worker serves the map frontend itself: one URL for app + API, no CORS.
+# Requests matching files in flight/ are static; everything else (e.g. /v1/*)
+# hits the Worker script. Docs are excluded via flight/.assetsignore.
+[assets]
+directory = "../flight"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ovrflight"
+database_id = "ff091b85-28a4-442a-904b-4fb73215d2ca"
+
+[[r2_buckets]]
+binding = "TRACKS"
+bucket_name = "ovrflight-tracks"
+
+[[durable_objects.bindings]]
+name = "CELLS"
+class_name = "GeoCell"
+
+[[durable_objects.bindings]]
+name = "REGISTRY"
+class_name = "CellRegistry"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GeoCell"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["CellRegistry"]

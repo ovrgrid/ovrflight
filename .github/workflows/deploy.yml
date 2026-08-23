@@ -1,0 +1,34 @@
+# OVRFLIGHT deploy: push to main -> wrangler deploy of Worker ovrflight-api.
+#
+# One-time setup: add repo secrets CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID (same values as the other ovrgrid repos).
+# No Cloudflare secret VALUES live in this file.
+#
+# This deploy NEVER runs the D1 schema - that stays manual so a push can't
+# alter live data:  npx wrangler d1 execute ovrflight --remote --file schema.sql
+
+name: Deploy OVRFLIGHT
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# If several pushes land quickly, cancel the older in-flight deploy.
+concurrency:
+  group: deploy-ovrflight
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy OVRFLIGHT API (ovrflight-api)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy flight-worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: flight-worker
+          command: deploy
