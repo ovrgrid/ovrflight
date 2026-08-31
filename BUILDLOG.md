@@ -44,3 +44,36 @@ is authoritative at every moment, and the switch is a reviewed PR, not a side ef
 **Lesson carried from the TeamTrain lift:** move the code verbatim and the history
 pointer explicitly. A lift that "cleans up while moving" turns a file copy into a
 debugging session, and a repo that pretends it has no past loses its lessons.
+
+### 2026-08-31 - AIRULES: the network rules stop being five copies
+
+**Shipped.** A new repo, `ovrgrid/airules`, now holds the rules every Claude session
+follows on every ovrgrid site. `RULES.md` R1 to R12 is the canonical block; a GitHub Action
+there pushes it into every consumer repo's `CLAUDE.md` as a docs-only PR, replacing
+everything between the `AIRULES:START` and `AIRULES:END` markers and touching nothing
+outside them. This repo's `CLAUDE.md` is now site facts plus that block. `LESSONS.md`
+carries the cross-site lessons harvested from every BUILDLOG; `REVIEW.md` is the protocol
+that keeps the rules honest rather than merely deployed.
+
+**Why.** The em-dash ban had been in force since 2026-08-22 and kept failing. Root cause
+was not effort, it was distribution: the rule existed in exactly one repo's `CLAUDE.md`
+(the hub) and had never been written into the other four, so four sessions out of five had
+never read it. Writing it into all five would have been the same mistake one size larger,
+because five copies drift. The fix had to make "written down" and "in force everywhere" the
+same act.
+
+**Why not the hub.** The hub was the obvious home and it is the wrong one. TeamTrain is
+deliberately outside federation and outside the build bridge, and it still needs the rules,
+because rules are build-time behaviour while federation is runtime data. The hub is now a
+consumer of AIRULES exactly like the spokes: the biggest feeder into it, not its owner.
+`docs/BRAND-STANDARD.md` v1.4 accordingly hands Voice over and keeps imagery.
+
+**Lesson.** A rule stored in one place is not a network rule, it is a local habit. And a
+rule that enumerates surfaces is read as excluding the surfaces it forgot to name: the
+em-dash rule listed files, so sessions correctly concluded chat was out of scope. R2 now
+names chat replies first.
+
+**Owner action to finish it.** AIRULES needs one fine-grained PAT, scoped to the five repos
+with Contents and Pull requests read/write, stored as the secret `AIRULES_SYNC_TOKEN` in
+that repo only. Until it exists the block is correct everywhere but the sync cannot re-push
+it. Setup steps are in the repo's README.
