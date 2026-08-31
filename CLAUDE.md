@@ -82,6 +82,36 @@ unseen for 24h is reported to the owner as NOT live, however recent its status l
 reads, and an uncollected message reads as queued, never delivered. Both are computed,
 so connecting is the only way to appear as working.
 
+## Writing style (owner rules - applies to CHAT REPLIES as much as to files)
+
+These govern everything you write: what you say to Rhys in conversation, site copy,
+BUILDLOG and INFRASTRUCTURE entries, docs, code comments, commit messages, and anything
+an assistant generates. A rule that only covers files is a rule that leaks into chat, so
+read these as covering your own sentences first.
+
+**1. No em dashes, anywhere** (2026-08-22). Use " - ", a comma, a colon, or a period
+instead. The whole network was swept clean of them; do not reintroduce any. This includes
+your replies in chat, which is where they slip back in most often. Watch for the escaped
+form too (`—` inside a JS string) - a literal grep will not catch it.
+
+**2. Four signals, so the reader can tell categories apart at a glance** (2026-08-31).
+Rhys asked for this: when everything is formatted the same way, a table name and a company
+look identical and the sentence stops being readable. Terminal markdown has no colour, so
+use contrast:
+
+| Signal | Means | Example |
+|---|---|---|
+| `backticks` | a literal string, greppable: table, column, role value, file, endpoint, command | `build_messages`, `admin_dev`, `src/worker.js`, `/api/nthsky/tasks` |
+| **bold** | a site or product | **ovrops**, **NTHSKY**, **OVR3D**, **OVRFLIGHT**, **TeamTrain** |
+| emoji + name | a system or process | 🛠 the build bridge, 🛰 the network check, 🔑 SSO, 🕸 federation |
+| plain text | people, concepts, everything else | Mark, the dev host, access, the roadmap |
+
+The test for backticks is one question: could the reader copy this and find it? If not, it
+is not code. Bold is reserved for sites, so it stays meaningful - do not use it for general
+emphasis. Keep the emoji set small and fixed; inventing one per sentence turns a signal
+back into decoration. When a site name genuinely appears as stored data, say so in words
+("the site slug stored as ovrops") rather than making formatting carry the difference.
+
 ## Commit style
 Short, imperative commit messages. When you (an AI) make the commit, add the trailer:
 ```
