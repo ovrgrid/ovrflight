@@ -59,7 +59,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.0 -->
+<!-- AIRULES:START v1.1 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -168,4 +168,25 @@ development, not a hand-coder. Explain what a change does and why in plain terms
 exact steps to deploy or test it, and do not assume framework knowledge. Say what you
 actually did and what you did not do. If a check failed, show the output rather than
 summarising it away.
+
+### R13. Every switch ships with its control on an admin screen
+Owner call, 2026-09-23: "Do not ever make code that is a toggle or trigger for something
+without connecting it to a setting and/or toggle inside an admin page." Anything you build
+that changes how a product behaves - a toggle, a trigger, a threshold, a cap, a price, a
+recipient, a schedule, a feature flag, a page password - ships WITH a control on an admin
+screen that shows it and changes it, in the same change. Not a SQL statement, not a
+wrangler var, not a constant with a comment saying "change this number". The owner should
+never have to ask for the settings screen: it is part of the feature, like its table is.
+- **Where the value lives:** a settings table, or the feature's own table, that the screen
+  writes. A var or a constant may hold the DEFAULT; the screen holds the live value.
+- **What the control shows:** the current value, who changed it and when, and one sentence
+  on what it does. A switch whose effect is not live yet says so on the screen.
+- **A control that saves but does nothing is worse than none.** It tells the owner a thing
+  is off when it is on. Wire the control to the behaviour, then prove the behaviour moves
+  when the control does, on the screen (R7).
+- **Genuine infrastructure is the only exception** (a binding, a secret, a hostname, a
+  cron slot). Say so in the change and in `INFRASTRUCTURE.md`, so it is a decision rather
+  than an oversight.
+- **The test before calling it done:** if the owner wanted this different tomorrow, where
+  would he click? If the answer is "ask a session", it is not done.
 <!-- AIRULES:END -->
