@@ -77,3 +77,32 @@ names chat replies first.
 with Contents and Pull requests read/write, stored as the secret `AIRULES_SYNC_TOKEN` in
 that repo only. Until it exists the block is correct everywhere but the sync cannot re-push
 it. Setup steps are in the repo's README.
+
+## 2026-09-27 - OVR 1 gets a home, and "public" becomes a rule
+
+**What.** OVR 1, NTHSKY's research and development program for a small drone and its dock,
+now has a folder here: `ovr1/CLAUDE.md` (what may and may not live in this repo, and where
+everything else lives) and `ovr1/TESTING.md` (the test method: four rules, a step ladder
+ending at "prototype zero", the Part 107 minimums before any outdoor flight, bench safety,
+and one record format for every test). The site itself, the team's working side and the
+project NDA are on the **NTHSKY** hub (`nthsky.ai/ovr1`, `nthsky.ai/ovr1build`), built the
+same day on the hub's own branch.
+
+**Why so little.** The owner asked for the program to have its own branch here and to mimic
+the MD files. Checking the repo first showed that `ovrgrid/ovrflight` is **public**, while the
+program is confidential by default: its team signs an NDA before seeing anything. So the
+program's substance (parts, suppliers, prices, designs, people, test data) stays on the
+working side, in the private hub repo and on the Drive, and a private repo for the code and
+test data is proposed (`ovrgrid/ovr1`) for the owner to create. What lives here is the
+method and the pointers, which are safe to publish and useful to anyone on the team.
+
+**Also.** The FAA rules the testing doc states were checked against the regulation and the
+FAA's registration page on the day, not written from memory: Category 1 over people needs
+0.55 lb or less AND no exposed rotating parts that would lacerate skin (14 CFR 107.110), and
+under Part 107 an aircraft is registered whatever its weight, so it needs Remote ID. A
+sub-250 g design alone does not make a flight over people legal.
+
+**LESSON.** Check a repository's visibility before writing anything into it. The instruction
+"put it in the flight repo" was about where the work belongs; whether a word of it can be
+public is a separate question, and a public commit cannot be taken back. It is now site
+rule 4 in `CLAUDE.md`, so the next session meets it before it writes anything.
