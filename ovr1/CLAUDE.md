@@ -31,7 +31,7 @@ folder: **how the program is run** (method, checklists, templates) and **where t
 | Program journal: sources, plan, steps, decisions | `ovrgrid/nthsky.ai` (private) → `docs/builds/ovr-1-dock.md` | the organization |
 | NDA text and the questions for counsel | `ovrgrid/nthsky.ai` → `docs/builds/ovr-1-dock-nda.md` | the organization |
 | Source material (the build sheets, reasoning, models) | the NTHSKY Drive | Drive sharing |
-| Code, firmware, parameters and test data | a private repo, proposed as `ovrgrid/ovr1`; **not created yet**, the owner decides | not applicable yet |
+| Code, firmware, parameters and test data | the private repo `ovrgrid/ovr1` (decided 2026-09-27) | the program team |
 | Who signed, who came in and what they did | hub Admin → 🗄 Records | owner tier only |
 
 ## How it runs
