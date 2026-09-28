@@ -33,6 +33,9 @@ conflict; don't silently assume. Sync before building: `git fetch origin main`.
 - `schema.sql` - Cloudflare D1 schema for the `ovrflight` database (idempotent)
 - `.github/workflows/deploy.yml` - push-to-main deploy via wrangler-action
 - `BUILDLOG.md` - the running build story: decisions, incidents, lessons (append-only)
+- `ovr1/` - the home of **OVR 1**, NTHSKY's small drone and dock R&D program: method
+  (`ovr1/TESTING.md`) and pointers only (`ovr1/CLAUDE.md`). Its confidential material lives
+  on the hub's working side and in private repos, never here (site rule 4)
 
 ## Site rules (on top of the network rules below)
 1. **This is a safety-adjacent product.** The map informs pilots about shared airspace.
@@ -41,6 +44,10 @@ conflict; don't silently assume. Sync before building: `git fetch origin main`.
 2. **Anything touching ingest, auth, SSO or the live map is a big change**, whatever its
    diff size, because the failure mode is a pilot trusting a wrong picture of the sky.
 3. **Version lane letter is `f`** (see `OPERATING_METHOD.md` "Version lanes" and R8 below).
+4. **This repository is PUBLIC.** Anyone can read every file and every commit, forever.
+   Nothing confidential goes in it: no customer or pilot data, no prices or partner names,
+   and nothing from a program under NDA (OVR 1: see `ovr1/CLAUDE.md`). Secrets were always
+   out (R1); this rule covers everything else that is not ours to publish.
 
 ## Deploy notes (current)
 Pushing to `main` auto-deploys to live. Schema changes are applied manually
