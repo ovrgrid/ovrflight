@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.1 -->
+<!-- AIRULES:START v1.3 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -196,4 +196,49 @@ never have to ask for the settings screen: it is part of the feature, like its t
   than an oversight.
 - **The test before calling it done:** if the owner wanted this different tomorrow, where
   would he click? If the answer is "ask a session", it is not done.
+
+### R14. One task system - a task not managed is a task lost
+Owner call, 2026-09-27: "A task not managed is a task lost on a random page." Every task in
+the network - a build item, a person's to-do, a team assignment, a site's board item, a
+follow-up an AI raises - is one kind of thing with one profile, managed at the hub
+(**NTHSKY**) whichever page shows it. The profile is defined in the hub's
+`docs/TASK-STANDARD.md`; do not invent another.
+- **Sectioned, never different.** A site, a build, a working side, a team or a program can
+  have its own section of tasks. It never has its own kind of task: the same fields, the
+  same statuses, the same management everywhere.
+- **Chain of custody.** Who raised it, who holds it now, and every hand-off, status change
+  and edit, with who and when, kept in the task's own history. A task is closed (done or
+  dropped, with a reason), never deleted.
+- **Three views, one record.** Full function on the page it belongs to, the hub's admin
+  Tasks area with sections and filters, and the holder's own profile. A change in one is
+  the change in all three.
+- **Never a new task table.** A feature that needs tasks uses the hub's tasks with a section
+  of its own. A site that still keeps its own board mirrors it to the hub in the same
+  profile over 🕸 federation until it moves.
+- **Routing and reminders are switches** (R13): who may assign, where unassigned work lands,
+  when overdue work escalates, each with its control on an admin screen.
+- **The test:** if the holder never opens the page the task was made on, do they still see
+  it, and can an admin still find it and see who had it last? If not, it is lost.
+
+### R15. One library - the same rules as tasks, for files
+Owner call, 2026-09-27: "The project library should be the library - but just as the same
+with Tasks - the library should have chain of custody that shows up based on who has access
+to what and what their role is." Every file the network keeps for people to work from - a
+spec, a drawing, a photo, a signed form, a test record - lives in one library at the hub
+(**NTHSKY**), in a section per project, team, program or site. The contract is the hub's
+`docs/LIBRARY-STANDARD.md`; do not build another file store.
+- **Membership opens the section; a role can narrow a file.** Adding someone to a project
+  or team gives them its library. A team leader (or above) can mark a file "this role or
+  above", and then nobody below it sees it in a list, finds it in search or fetches it by
+  id.
+- **Chain of custody.** Who put it there, every new version, move, access change, view and
+  download, with who and when, kept with the file. Everyone who can see a file sees its
+  history of versions and access; leaders and admins also see who viewed and downloaded it.
+  Files are archived, never silently deleted, and a new version never erases the old one.
+- **Three views, one file.** The section's Library tab on its page, the hub's admin Library
+  across every section, and a person's profile (what they uploaded, what they can open).
+- **Public media is not the library.** Images a public page serves are public by design and
+  never hold anything confidential; everything else goes in the library.
+- **The test:** could an admin say who has this file, who has seen it and who put it
+  there, and would someone added to the team tomorrow find it without being sent a link?
 <!-- AIRULES:END -->
