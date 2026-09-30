@@ -127,6 +127,15 @@
   #map{position:absolute;inset:0;background:var(--slate)}
   .leaflet-container{background:var(--slate);font-family:'Inter',sans-serif}
 
+  /* Esri Dark Gray Canvas runs lighter than the retired CARTO dark_all, so the
+     BASE is darkened to sit near Ink/Slate and let the teal orbs carry the eye.
+     The label layer is deliberately NOT darkened the same way: crushing it
+     would make place names unreadable, which is the whole reason Esri ships
+     labels separately. Filters are scoped per layer by className rather than
+     to the tile pane, so the two can be tuned independently. */
+  .basemap-dark{filter:brightness(.52) contrast(1.08) saturate(.7)}
+  .basemap-labels{filter:brightness(.8);opacity:.7}
+
   /* helicopters: red, slow-pulsing outlined triangle */
   .tri{color:var(--heli);filter:drop-shadow(0 0 6px rgba(255,92,92,.75));
     animation:heliPulse 2.6s ease-in-out infinite}
@@ -742,8 +751,20 @@ function initMap(){
   map=L.map('map',{zoomControl:true,attributionControl:true})
       .setView(isFinite(bootLat)&&isFinite(bootLon)?[bootLat,bootLon]:[35.5951,-82.5515],
         isFinite(bootLat)?14:13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19
+  // Esri Dark Gray Canvas: no API key, unlike CARTO which began demanding one
+  // (2026-09) and served every tile stamped API KEY REQUIRED. Base and labels
+  // are separate services, so each gets its own darkening (see .basemap-*).
+  // Esri has no data past z16 and answers z17+ with a LIGHT placeholder tile
+  // reading "Map data not yet available" - visually the same failure we are
+  // fixing. maxNativeZoom pins requests at 16 and lets Leaflet upscale, so
+  // close-in work (quarter-mile conflict radius) still has a dark map under it.
+  const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+  L.tileLayer(ESRI + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
+    className: 'basemap-dark', maxNativeZoom: 16, maxZoom: 19
+  }).addTo(map);
+  L.tileLayer(ESRI + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+    className: 'basemap-labels', maxNativeZoom: 16, maxZoom: 19
   }).addTo(map);
 
   syncMarkers();
@@ -1291,8 +1312,10 @@ function openDash(){
 }
 function initMini(){
   dMini=L.map('miniMap',{zoomControl:false,attributionControl:false}).setView([39.5,-96.5],4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    {subdomains:'abcd',maxZoom:19}).addTo(dMini);
+  // Base only on the mini map: at country zoom the label layer is clutter.
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/' +
+    'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    {className:'basemap-dark',maxNativeZoom:16,maxZoom:19}).addTo(dMini);
   dLayer=L.layerGroup().addTo(dMini);
   dMini.on('click',e=>{
     dFilter.lat=e.latlng.lat;dFilter.lon=e.latlng.lng;

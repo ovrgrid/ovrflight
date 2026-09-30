@@ -106,3 +106,49 @@ sub-250 g design alone does not make a flight over people legal.
 "put it in the flight repo" was about where the work belongs; whether a word of it can be
 public is a separate question, and a public commit cannot be taken back. It is now site
 rule 4 in `CLAUDE.md`, so the next session meets it before it writes anything.
+
+---
+
+## 2026-09-30 - The map went blank: a free basemap stopped being free (v1.1f)
+
+The owner opened the live map and found it papered over with "API KEY REQUIRED /
+carto.com/basemaps?apikey" watermarks across every tile. Nothing in this repo had
+changed. CARTO began requiring an API key for `basemaps.cartocdn.com/dark_all`, and the
+map we had been serving since July quietly turned into a wall of advertising for their
+signup page. The aircraft layer, the list, the conflict logic: all still correct,
+sitting on top of an unusable backdrop.
+
+Replaced with Esri **World Dark Gray Canvas** (`server.arcgisonline.com`), which needs
+no key. Esri splits base and labels into two services, which turned out to be a feature:
+the base is darkened hard in CSS to sit near Ink/Slate so the teal orbs carry the eye,
+while the label layer is only lightly dimmed so place names stay readable. Filters are
+scoped per layer by `className` rather than applied to the whole tile pane, because
+darkening the pane would have crushed the labels along with the base. The dashboard mini
+map takes the base only: at country zoom, labels are clutter.
+
+**The trap, caught before shipping and not by luck.** Esri answers z17 and beyond with
+HTTP 200 and a tile - but the tile is a LIGHT grey square reading "Map data not yet
+available". Identical byte length at z17, z18 and z19 is what gave it away; downloading
+one and looking at it confirmed it. Shipping that would have reproduced the exact bug we
+were fixing, one zoom level in, and it would have looked like our own CSS was broken
+rather than a provider limit. Both layers now pin `maxNativeZoom: 16` so Leaflet upscales
+the last real tile instead of requesting the placeholder - slightly soft when zoomed
+tight, which is the right trade for a quarter-mile conflict radius that still has a dark
+map under it. A 200 is not the same as a usable response, and byte-identical responses
+across inputs that should differ are worth one more look.
+
+**The lesson, which is bigger than one provider.** Leaflet is vendored into this repo, so
+we treated the map as self-contained. It never was: the tiles were always a live call to
+a third party operating under terms they can change unilaterally, and they did, with no
+notice and no deploy on our side. A dependency that can break the product without anyone
+touching the code deserves to be named in `INFRASTRUCTURE.md` rather than living
+implicitly inside a URL string, so section 2 now calls the basemap out as the one
+external runtime dependency and says to suspect the provider first when the map looks
+wrong. Worth a follow-up: nothing watches for this. A basemap that silently degrades is
+invisible to every health check we have, because the tiles are fetched by the browser and
+never touch our Worker.
+
+Verified in a real browser against the actual page, not just by reading the diff: 40
+tiles loaded across both layers, zero requests to CARTO, zero failed tile responses, no
+JS errors, 45 simulated aircraft still rendering, and place labels (Asheville, Woodfin)
+legible against the darkened base.

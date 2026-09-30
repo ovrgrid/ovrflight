@@ -4,8 +4,8 @@
 > here first, and write every change back here. If reality and this file disagree, fix
 > this file.
 
-**Last updated:** 2026-08-23
-**Version:** 1.0f
+**Last updated:** 2026-09-30
+**Version:** 1.1f
 **Maintained by:** Rhys Andersen (OvrWatch / ovrgrid)
 
 **Status key:** ✅ live & confirmed · 🟡 in progress / unconfirmed · ⬜ planned
@@ -36,6 +36,17 @@ API keys, flights, missions, the verification queue and the build board. R2
 `ovrflight-tracks` archives flight tracks (the platform copy is never deleted). Auth is
 self-built (hashed API keys in D1) plus NTHSKY SSO. No framework, no build step -
 deploy is `wrangler deploy`.
+
+**The one external runtime dependency is the basemap.** Leaflet itself is vendored into
+the repo, but map tiles come from Esri **World Dark Gray Canvas**
+(`server.arcgisonline.com`, no API key): `World_Dark_Gray_Base` plus a separate
+`World_Dark_Gray_Reference` label layer. Esri holds no data past z16 and answers z17+
+with a light "Map data not yet available" placeholder, so both layers pin
+`maxNativeZoom: 16` and let Leaflet upscale to z19. Tiles are darkened in CSS
+(`.basemap-dark`, `.basemap-labels`) to sit near Ink/Slate. This replaced CARTO
+`dark_all`, which began requiring an API key in 2026-09 and stamped every tile
+"API KEY REQUIRED". A third-party basemap is a live dependency whose terms can change
+without notice: if the map ever renders wrong, suspect the tile provider first.
 
 ## 3. Cloudflare resources
 
@@ -105,4 +116,5 @@ authenticated polling.
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-09-30 | 1.1f | 🗺 **Basemap moved to Esri Dark Gray Canvas.** CARTO `dark_all` began requiring an API key and served every tile stamped "API KEY REQUIRED", so the live map was unreadable. Swapped both call sites (live map + dashboard mini map) to Esri `World_Dark_Gray_Base`, no key, with `World_Dark_Gray_Reference` for labels on the main map only. Esri has no data past z16 and serves a LIGHT placeholder tile above it, so both layers pin `maxNativeZoom: 16` and Leaflet upscales to z19. Darkened in CSS per layer (`.basemap-dark`, `.basemap-labels`) so it reads as Ink/Slate and the teal orbs still carry the eye. Verified in a real browser: 40 tiles loaded, zero CARTO requests, zero failures, labels legible. |
 | 2026-08-23 | 1.0f | 🛫 **Repo extraction: OVRFLIGHT stands alone.** Lifted from `ovrgrid/ovr3d` (`flight-worker/` + `flight/` + `db/ovrflight-schema.sql` → root `schema.sql`; references updated) into `ovrgrid/ovrflight`, the same move that gave TeamTrain its own repo. Copied verbatim: the Worker, wrangler.toml (bindings unchanged), the frontend, the four flight docs, the SSO test. New here: this file (v1.0f - first version in the `f` lane), CLAUDE.md, BUILDLOG.md, OPERATING_METHOD.md (from teamtrain, the portable reference), single-job deploy workflow. No code change, no schema change, no live deploy from this repo until the Actions secrets are added and the ovr3d cutover PR removes the old deploy job - until then ovr3d remains the authoritative deployer. Pre-lift history: ovr3d INFRA v1.3-v4.17a + BUILDLOG. |
