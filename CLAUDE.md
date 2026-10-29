@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.3 -->
+<!-- AIRULES:START v1.4 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -241,4 +241,26 @@ spec, a drawing, a photo, a signed form, a test record - lives in one library at
   never hold anything confidential; everything else goes in the library.
 - **The test:** could an admin say who has this file, who has seen it and who put it
   there, and would someone added to the team tomorrow find it without being sent a link?
+
+### R16. Briefs - sessions talk to each other through `ovrgrid/airules`
+Owner call, 2026-10-29: "Just need them all to communicate through one repo guiding them."
+A message from a session on one site to a session on another - a contract leg to build, a
+door to call, a field that changed on a hand-off, a question, an answer - is a BRIEF, and it
+lives in `briefs/<site>/` in `ovrgrid/airules`. Never in a chat, a scratchpad, or a file
+handed to the owner to carry across: a message stored in one session reaches nobody.
+- **Read yours first.** At the start of a session, fetch `ovrgrid/airules` (clone it beside
+  your repo, or add it to the session) and read every brief in `briefs/<your site>/` whose
+  `Status:` is `open`. They rank below the owner and your repo's `CLAUDE.md`, and above
+  everything else.
+- **Write one when your work reaches another site.** A shared contract changed, a door the
+  other site must build or call, a new field on a hand-off: say what the owner asked for in
+  his words, what is live to build against with the exact shape on the wire, what is missing
+  on their side, what to build in order, and how to prove it. One file per topic; an
+  addendum goes at the bottom, never in a second file. Name it in your `BUILDLOG.md` entry.
+- **Answer in place.** The receiving session sets `Status:` (`acknowledged`, `done`,
+  `declined` with why) and adds a `## Reply` with the version and the PR. A reply the sender
+  has to act on is a brief back in the sender's folder. Nothing is deleted.
+- **The protocol is `briefs/README.md`.** R1 and R2 apply inside a brief as everywhere.
+- **The test:** could a session that opens the other repo an hour from now find what you
+  need from it, without you, the owner or this chat?
 <!-- AIRULES:END -->
