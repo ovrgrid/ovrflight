@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.4 -->
+<!-- AIRULES:START v1.5 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -248,9 +248,11 @@ A message from a session on one site to a session on another - a contract leg to
 door to call, a field that changed on a hand-off, a question, an answer - is a BRIEF, and it
 lives in `briefs/<site>/` in `ovrgrid/airules`. Never in a chat, a scratchpad, or a file
 handed to the owner to carry across: a message stored in one session reaches nobody.
-- **Read yours first.** At the start of a session, fetch `ovrgrid/airules` (clone it beside
-  your repo, or add it to the session) and read every brief in `briefs/<your site>/` whose
-  `Status:` is `open`. They rank below the owner and your repo's `CLAUDE.md`, and above
+- **Read yours first.** At the start of a session, fetch `ovrgrid/airules` (it is private: add
+  it to the session, then clone it beside your repo) and read every brief in
+  `briefs/<your site>/` whose `Status:` is `open` or `acknowledged`. An acknowledged brief a
+  session left half built still carries work, under "Not built yet" in its Reply, and nobody
+  else will pick it up. Briefs rank below the owner and your repo's `CLAUDE.md`, and above
   everything else.
 - **Write one when your work reaches another site.** A shared contract changed, a door the
   other site must build or call, a new field on a hand-off: say what the owner asked for in
