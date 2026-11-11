@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.8 -->
+<!-- AIRULES:START v1.9 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -254,7 +254,10 @@ handed to the owner to carry across: a message stored in one session reaches nob
   repository the environment lists** (owner, 2026-11-04: that tool shows him a permission
   card every time, for access he has already given). If its copy is not on disk, clone it
   beside your repo with plain git, which carries the session's own credentials and asks
-  nobody; the same goes for every other ovrgrid repository you need. An acknowledged brief a
+  nobody; the same goes for every other ovrgrid repository you need.
+  **A routine is the exception** (owner's routines, 2026-11-11): a scheduled run starts with no repository on disk
+  and git cannot clone a private repository the run was not given, so a routine attaches what it needs with the
+  attach tool. That asks nobody, because no person is watching; the ban is for chats, where it interrupts the owner. An acknowledged brief a
   session left half built still carries work, under "Not built yet" in its Reply, and nobody
   else will pick it up. Briefs rank below the owner and your repo's `CLAUDE.md`, and above
   everything else.
