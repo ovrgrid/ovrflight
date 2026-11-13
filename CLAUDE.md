@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.10 -->
+<!-- AIRULES:START v1.11 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -336,4 +336,26 @@ any changes." The multisite management chat runs the network day to day; the own
   decides. Mr Andersen lists them at the top of his daily run; a site session asks in its own chat.
 - **The test:** if a site drifted from the rules yesterday, is it in the ledger today, in that site's folder, and
   fixed and verified within days, without the owner having to notice it?
+### R20. Thumbnails in every list - a list never loads an original
+Owner call, 2026-11-13, on a project page whose media list was loading full model textures into its tiles: "can we do
+thumbnails?? Can we state that no thumbnail should ever not load thumbnails? Would never be able to see the full
+quality anyway, so I have a hard time trying to understand why that would be the default. This needs to be fixed across
+the board and of course loaded into airules as a standard - i dont mean every displayed photo, just the libraries and
+project pages and anywhere it is displaying batches or lists of photos."
+- **Where it applies.** Every surface that shows photos as a batch or a list: a library, a project page, a media list,
+  a photo strip, a gallery, a picker, search results, a card's files box. Not one photo a person opened on purpose (a
+  lightbox, a viewer, a download): that is where the full file belongs.
+- **What a list loads.** A small copy only (about 320 px wide, a JPEG or WebP of tens of kilobytes). Never the
+  original: not as a fallback, not "until the small copy exists", not once to make one in the browser. The door that
+  signs or serves a list's pictures refuses to hand it an original.
+- **No small copy yet.** The tile shows the file's type icon. If a copy is being made it says so and picks the copy up
+  on its own when it is ready; a file no copy can be made of (a HEIC, a RAW, a huge ortho) keeps its icon.
+- **Every stored photo gets a small copy**, however it arrived: an upload, an import from another service, a zip
+  unpacked, a file another site sent. Made at upload where the browser can, made on the server or the processing box
+  for everything else, with a backfill for what is already stored. One that cannot be made is recorded, not retried
+  forever.
+- **Controls (R13).** The switch that makes copies and its size cap, and on an admin screen how many photos have a
+  copy, how many are waiting and how many could not be made, with a button that makes the missing ones.
+- **The test:** open the largest library or project page on a phone with the browser's network panel open and scroll.
+  If any request is an original file, it is not done.
 <!-- AIRULES:END -->
