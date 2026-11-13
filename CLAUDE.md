@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.9 -->
+<!-- AIRULES:START v1.10 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -157,6 +157,17 @@ Co-Authored-By: Claude <model> <noreply@anthropic.com>
 
 Never put a model identifier anywhere else in a pushed artifact: not in PR titles or
 bodies, not in code comments, not in site copy.
+
+**Models are tiers, never names** (owner, 2026-11-13: "definitely dont want to name the model and all that ... just go
+basic advanced expert ultra"). Every AI feature runs on one of four tiers: **Basic** (the smallest, fastest model),
+**Advanced** (the middle one), **Expert** (the large one) and **Ultra** (the largest). No screen, setting, dropdown,
+price table, report, doc, code comment, log line or AI reply names a model: it says the tier.
+- **One map, in code.** Each site keeps one constant that maps a tier to the current model id (`MODEL_TIERS`). It is
+  the only place an id appears, so moving a tier to a newer model is one edit and changes nothing a person reads.
+- **Settings store the tier**, not the id (R13: the screen shows Basic, Advanced, Expert or Ultra, who set it and when),
+  and prices are per tier. A plain var that must hold an id is infrastructure: its doc row says which tier it is.
+- **History stays.** Old `BUILDLOG.md` entries and frozen snapshots are not rewritten; the rule applies to everything
+  written from now on and to every live screen and doc. The commit trailer above is the one exception, as it was.
 
 ### R10. Reuse before rebuild
 Platform machinery already exists somewhere in the network (auth, invites, vault, push,
