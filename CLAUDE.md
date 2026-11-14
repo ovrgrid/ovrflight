@@ -66,7 +66,7 @@ the only way to appear as working.
 
 ---
 
-<!-- AIRULES:START v1.11 -->
+<!-- AIRULES:START v1.12 -->
 ## Network rules (synced from `ovrgrid/airules` - do not edit here)
 
 These come from `RULES.md` in `ovrgrid/airules` and are identical in every ovrgrid repo.
@@ -358,4 +358,29 @@ project pages and anywhere it is displaying batches or lists of photos."
   copy, how many are waiting and how many could not be made, with a button that makes the missing ones.
 - **The test:** open the largest library or project page on a phone with the browser's network panel open and scroll.
   If any request is an original file, it is not done.
+### R21. One module, one code, everywhere - and agents that fix small things and talk
+Owner call, 2026-11-14: "clean up a lot of the code to where it's not different per site ... so that when we do the
+flight app ... we can automatically take these modules and chuck them in there ... anytime any one of them changes,
+there's a record of all of them and all of them get the change. ... Each one of the modules should have its own
+settings." And on agents: "I want the agents to be able to double check things. I want the agents to be able to suggest
+and or fix things. I don't mind if it's a simple thing to fix ... whatever the rules are, set the rules ... and allow us
+to communicate with them."
+- **A module is built once.** A feature more than one site has (the suggestion box, the agents board, the Thinkboard, the
+  library, tasks, the import and export workbench, the admin shell) has ONE master and a version (`<NAME>_MODULE_VERSION`).
+  Every site runs the master with its own data and its own settings screen; nobody grows a second copy. A change is made
+  in the master and reaches every site that runs it, with a record of which version each site is on. The plan, the
+  module list, which site holds each master and the order they move is `docs/MODULES-PLAN.md`.
+- **Agents may fix what a session may commit straight to `main`** (R6's small bucket: copy, a label, a doc, a log
+  entry, a clear bug with its test), in the same way a session must (`BUILDLOG.md`, `INFRASTRUCTURE.md`, the site's
+  `CLAUDE.md`, tests), and say what they did. Anything bigger, any standard, money, access, a delete or anything this
+  file gives the owner is a proposal, never a change.
+- **Every agent item is a task with a conversation** (R14). A finding, a "this was fixed", a "this needs doing" or a log
+  line an agent writes is a task in the hub's tasks with its own thread. The owner (or anyone the place allows) writes in
+  that thread; the agent reads the thread as context on its next run and answers in it, so the talk stays on the item it
+  is about. The thread is the record.
+- **Each agent's switches and limits are settings** (R13): on or off, what it may fix on its own, its schedule and its
+  tier, on its page on the hub's agents board.
+- **The test:** a module changed on one site this week; is every site that runs it on the new version, or listed as
+  behind? And could the owner find any agent's finding, answer it in one box, and see the agent's reply the next day?
+
 <!-- AIRULES:END -->
